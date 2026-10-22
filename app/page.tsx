@@ -1,17 +1,36 @@
-﻿import Link from "next/link";
+﻿
+import Link from "next/link";
 
 const services = [
   {
+    name: "Stage 1 ECU File",
+    price: "From £45",
+    desc: "Stage 1 calibration for supported ECU software and standard hardware configurations.",
+    tag: "STAGE 1",
+  },
+  {
+    name: "Stage 2 ECU File",
+    price: "From £80",
+    desc: "Performance calibration for suitable modified vehicles, subject to hardware and software checks.",
+    tag: "STAGE 2",
+  },
+  {
+    name: "Stage 1 DSG / TCU File",
+    price: "From £60",
+    desc: "Gearbox calibration for supported DSG and TCU software versions.",
+    tag: "TRANSMISSION",
+  },
+  {
     name: "Custom ECU Files",
     price: "From £180",
-    desc: "Bespoke engine ECU file service, with compatibility checks and calibration requirements reviewed for your vehicle.",
-    tag: "ENGINE",
+    desc: "Bespoke ECU file development and calibration work, subject to compatibility and requirements.",
+    tag: "CUSTOM ECU",
   },
   {
     name: "Custom TCU / DSG Files",
     price: "From £180",
-    desc: "Custom transmission calibration for supported TCU and DSG control units, tailored to your gearbox and requirements.",
-    tag: "TRANSMISSION",
+    desc: "Custom transmission calibration for supported control units and specific requirements.",
+    tag: "CUSTOM TCU",
   },
   {
     name: "Log & File Review",
@@ -41,16 +60,16 @@ export default function Home() {
       </nav>
 
       <section className="hero">
-        <div className="eyebrow">ECU · DSG · CUSTOM CALIBRATION</div>
+        <div className="eyebrow">ECU · DSG · PERFORMANCE CALIBRATION</div>
         <h1>
           Calibration work.<br />
           <em>Handled properly.</em>
         </h1>
         <p>
-          Custom ECU and TCU file services starting from £180.
-          Submit your requirements, track your order through your
-          customer account and securely access completed work
-          once it has been approved.
+          Stage 1 ECU files from £45, Stage 2 from £80,
+          and custom ECU and TCU development from £180.
+          Submit your requirements, track your order and
+          access approved work through your customer account.
         </p>
         <div
           className="row"
@@ -81,29 +100,26 @@ export default function Home() {
         <article className="card">
           <h2>Pricing that fits the job</h2>
           <p>
-            Custom ECU and TCU services start at £180. Additional
-            charges may apply depending on the control unit, file
-            requirements, supplier costs and complexity. The final
-            price will be confirmed before work begins.
+            Prices are starting points. Final costs depend on the ECU
+            or TCU, software version, file requirements, supplier costs
+            and job complexity. We confirm the price before work begins.
           </p>
         </article>
         <article className="card">
           <h2>Secure file handling</h2>
           <p>
-            Keep your vehicle details, submitted files, order status
-            and technician updates together in your customer account.
-            File compatibility and suitability are reviewed before
-            work is accepted.
+            Keep vehicle details, submitted files, order status and
+            technician updates together in your customer account.
+            Compatibility is reviewed before work is accepted.
           </p>
         </article>
       </section>
 
       <footer>
-        JCS Automotive Tuning · Custom ECU and TCU services from £180.
-        Additional costs depend on the job and will be confirmed
-        before work begins. All work is subject to compatibility
-        review. Emissions services are limited to diagnostics and
-        lawful repairs.
+        JCS Automotive Tuning · Prices are starting prices and may vary
+        by vehicle, control unit and requirements. All work is subject
+        to compatibility review. Emissions services are limited to
+        diagnostics and lawful repairs.
       </footer>
     </main>
   );
