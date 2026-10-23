@@ -9,26 +9,32 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage() {
   const supabase = createClient();
+
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
 
-  if (authError || !user) redirect("/login");
+  if (authError || !user) {
+    redirect("/login");
+  }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "admin") redirect("/dashboard");
+  if (profileError || profile?.role !== "admin") {
+    redirect("/dashboard");
+  }
 
   const admin = createAdminClient();
+
   const { data: orders, error } = await admin
     .from("orders")
     .select(
-      "id,user_id,service_name,amount_pence,currency,status,payment_status,vehicle_make,vehicle_model,engine_code,software_id,customer_notes,admin_notes,created_at"
+      "id,user_id,service_code,service_name,amount_pence,currency,status,payment_status,vehicle_make,vehicle_model,engine_code,software_id,customer_notes,admin_notes,created_at"
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -37,7 +43,10 @@ export default async function AdminOrdersPage() {
     console.error("Admin orders page query failed:", error.message);
   }
 
-  const userIds = [...new Set((orders ?? []).map((order) => order.user_id))];
+  const userIds = [
+    ...new Set((orders ?? []).map((order) => order.user_id)),
+  ];
+
   let emailByUserId: Record<string, string> = {};
 
   if (userIds.length > 0) {
@@ -46,9 +55,17 @@ export default async function AdminOrdersPage() {
       .select("id,email")
       .in("id", userIds);
 
-    if (!profilesError) {
+    if (profilesError) {
+      console.error(
+        "Admin customer profiles query failed:",
+        profilesError.message
+      );
+    } else {
       emailByUserId = Object.fromEntries(
-        (profiles ?? []).map((item) => [item.id, item.email])
+        (profiles ?? []).map((item) => [
+          item.id,
+          item.email ?? "Unknown customer",
+        ])
       );
     }
   }
@@ -65,9 +82,11 @@ export default async function AdminOrdersPage() {
           <p className="eyebrow">JCS AUTOMOTIVE TUNING</p>
           <h1>Orders Management</h1>
           <p className="muted">
-            Review customer submissions and manage job progress.
+            Review customer submissions, set custom quotes, and manage job
+            progress.
           </p>
         </div>
+
         <Link className="button button-secondary" href="/admin">
           Back to overview
         </Link>

@@ -1,0 +1,213 @@
+warning: in the working copy of 'app/api/stripe/webhook/route.ts', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/app/api/stripe/webhook/route.ts b/app/api/stripe/webhook/route.ts[m
+[1mindex aa1f2b5..f9ac0a9 100644[m
+[1m--- a/app/api/stripe/webhook/route.ts[m
+[1m+++ b/app/api/stripe/webhook/route.ts[m
+[36m@@ -4,6 +4,7 @@[m [mimport Stripe from "stripe";[m
+ import { createAdminClient } from "@/lib/supabase/admin";[m
+ [m
+ export const runtime = "nodejs";[m
+[32m+[m[32mexport const dynamic = "force-dynamic";[m
+ [m
+ export async function POST(req: Request) {[m
+   const secretKey = process.env.STRIPE_SECRET_KEY;[m
+[36m@@ -41,15 +42,180 @@[m [mexport async function POST(req: Request) {[m
+     );[m
+   }[m
+ [m
+[31m-  if (event.type !== "checkout.session.completed") {[m
+[32m+[m[32mconst handledCheckoutEvents = new Set<string>([[m
+[32m+[m[32m    "checkout.session.completed",[m
+[32m+[m[32m    "checkout.session.async_payment_succeeded",[m
+[32m+[m[32m    "checkout.session.async_payment_failed",[m
+[32m+[m[32m  ]);[m
+[32m+[m
+[32m+[m[32m  if (!handledCheckoutEvents.has(event.type)) {[m
+     return NextResponse.json({ received: true });[m
+   }[m
+ [m
+   const session = event.data.object as Stripe.Checkout.Session;[m
+ [m
+[32m+[m[32m  if (event.type === "checkout.session.async_payment_failed") {[m
+[32m+[m[32m    console.warn("Stripe asynchronous checkout payment failed:", session.id);[m
+[32m+[m[32m    return NextResponse.json({ received: true });[m
+[32m+[m[32m  }[m
+[32m+[m
+   if ([m
+     session.mode !== "payment" ||[m
+[31m-    session.payment_status !== "paid" ||[m
+[32m+[m[32m    session.payment_status !== "paid"[m
+[32m+[m[32m  ) {[m
+[32m+[m[32m    return NextResponse.json({ received: true });[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  const admin = createAdminClient();[m
+[32m+[m
+[32m+[m[32m  // Customer order payments[m
+[32m+[m[32m  if (session.metadata?.type === "order_payment") {[m
+[32m+[m[32m    const orderId = session.metadata.order_id;[m
+[32m+[m[32m    const userId = session.metadata.user_id;[m
+[32m+[m
+[32m+[m[32m    if ([m
+[32m+[m[32m      !orderId ||[m
+[32m+[m[32m      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test([m
+[32m+[m[32m        orderId[m
+[32m+[m[32m      ) ||[m
+[32m+[m[32m      !userId ||[m
+[32m+[m[32m      session.client_reference_id !== userId[m
+[32m+[m[32m    ) {[m
+[32m+[m[32m      console.error("Stripe order payment has invalid references.");[m
+[32m+[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { error: "Invalid order payment reference." },[m
+[32m+[m[32m        { status: 400 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    if ([m
+[32m+[m[32m      session.currency !== "gbp" ||[m
+[32m+[m[32m      !Number.isSafeInteger(session.amount_total) ||[m
+[32m+[m[32m      (session.amount_total ?? 0) <= 0[m
+[32m+[m[32m    ) {[m
+[32m+[m[32m      console.error("Stripe order payment has an invalid amount or currency.");[m
+[32m+[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { error: "Invalid order payment amount or currency." },[m
+[32m+[m[32m        { status: 400 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const { data: order, error: lookupError } = await admin[m
+[32m+[m[32m      .from("orders")[m
+[32m+[m[32m      .select([m
+[32m+[m[32m        "id,user_id,amount_pence,currency,status,payment_status"[m
+[32m+[m[32m      )[m
+[32m+[m[32m      .eq("id", orderId)[m
+[32m+[m[32m      .maybeSingle();[m
+[32m+[m
+[32m+[m[32m    if (lookupError) {[m
+[32m+[m[32m      console.error("Order payment lookup failed:", lookupError.message);[m
+[32m+[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { error: "Could not verify the order." },[m
+[32m+[m[32m        { status: 500 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    if (!order || order.user_id !== userId) {[m
+[32m+[m[32m      console.error("Stripe order payment does not match an order/customer.");[m
+[32m+[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { error: "Order or customer does not match." },[m
+[32m+[m[32m        { status: 400 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    if ([m
+[32m+[m[32m      order.currency !== "GBP" ||[m
+[32m+[m[32m      order.amount_pence !== session.amount_total[m
+[32m+[m[32m    ) {[m
+[32m+[m[32m      console.error("Stripe payment amount does not match the order:", orderId);[m
+[32m+[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { error: "Payment amount does not match the order." },[m
+[32m+[m[32m        { status: 409 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // Stripe can deliver the same event more than once.[m
+[32m+[m[32m    if (order.payment_status === "paid") {[m
+[32m+[m[32m      return NextResponse.json({ received: true });[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    if ([m
+[32m+[m[32m      order.status !== "awaiting_payment" ||[m
+[32m+[m[32m      order.payment_status !== "unpaid"[m
+[32m+[m[32m    ) {[m
+[32m+[m[32m      console.error([m
+[32m+[m[32m        "Order is not payable but Stripe reports a completed payment:",[m
+[32m+[m[32m        orderId[m
+[32m+[m[32m      );[m
+[32m+[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { error: "Order state needs payment reconciliation." },[m
+[32m+[m[32m        { status: 409 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const { data: updatedOrder, error: updateError } = await admin[m
+[32m+[m[32m      .from("orders")[m
+[32m+[m[32m      .update({[m
+[32m+[m[32m        status: "paid",[m
+[32m+[m[32m        payment_status: "paid",[m
+[32m+[m[32m        updated_at: new Date().toISOString(),[m
+[32m+[m[32m      })[m
+[32m+[m[32m      .eq("id", orderId)[m
+[32m+[m[32m      .eq("user_id", userId)[m
+[32m+[m[32m      .eq("amount_pence", session.amount_total)[m
+[32m+[m[32m      .eq("currency", "GBP")[m
+[32m+[m[32m      .eq("status", "awaiting_payment")[m
+[32m+[m[32m      .eq("payment_status", "unpaid")[m
+[32m+[m[32m      .select("id")[m
+[32m+[m[32m      .maybeSingle();[m
+[32m+[m
+[32m+[m[32m    if (updateError) {[m
+[32m+[m[32m      console.error("Could not mark order as paid:", updateError.message);[m
+[32m+[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { error: "Could not update the order payment." },[m
+[32m+[m[32m        { status: 500 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    if (!updatedOrder) {[m
+[32m+[m[32m      // Another delivery may have completed the update concurrently.[m
+[32m+[m[32m      const { data: latestOrder, error: latestError } = await admin[m
+[32m+[m[32m        .from("orders")[m
+[32m+[m[32m        .select("payment_status,amount_pence,currency,user_id")[m
+[32m+[m[32m        .eq("id", orderId)[m
+[32m+[m[32m        .maybeSingle();[m
+[32m+[m
+[32m+[m[32m      if ([m
+[32m+[m[32m        !latestError &&[m
+[32m+[m[32m        latestOrder?.user_id === userId &&[m
+[32m+[m[32m        latestOrder.payment_status === "paid" &&[m
+[32m+[m[32m        latestOrder.amount_pence === session.amount_total &&[m
+[32m+[m[32m        latestOrder.currency === "GBP"[m
+[32m+[m[32m      ) {[m
+[32m+[m[32m        return NextResponse.json({ received: true });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      console.error("Order payment update needs reconciliation:", orderId);[m
+[32m+[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { error: "Could not safely confirm the order payment." },[m
+[32m+[m[32m        { status: 500 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    return NextResponse.json({ received: true });[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  // Existing Â£20 wallet top-up flow â€” preserved.[m
+[32m+[m[32m  if ([m
+     session.amount_total !== 2000 ||[m
+     session.currency !== "gbp" ||[m
+     session.metadata?.top_up_pence !== "2000"[m
+[36m@@ -66,8 +232,6 @@[m [mexport async function POST(req: Request) {[m
+     );[m
+   }[m
+ [m
+[31m-  const admin = createAdminClient();[m
+[31m-[m
+   const { error } = await admin.rpc("credit_wallet_topup", {[m
+     p_user_id: userId,[m
+     p_session_id: session.id,[m
+[36m@@ -76,6 +240,7 @@[m [mexport async function POST(req: Request) {[m
+ [m
+   if (error) {[m
+     console.error("Wallet credit failed:", error);[m
+[32m+[m
+     return NextResponse.json([m
+       { error: "Could not credit wallet." },[m
+       { status: 500 }[m

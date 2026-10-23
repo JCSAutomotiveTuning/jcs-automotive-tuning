@@ -1,48 +1,47 @@
-﻿
-import Link from "next/link";
+﻿import Link from "next/link";
 
 const services = [
   {
-    name: "Stage 1 ECU File",
-    price: "From £45",
-    desc: "Stage 1 calibration for supported ECU software and standard hardware configurations.",
+    name: "Stage 1 ECU File Service",
+    price: "£45",
+    desc: "Stage 1 file service for supported ECU software and standard hardware configurations.",
     tag: "STAGE 1",
   },
   {
-    name: "Stage 2 ECU File",
-    price: "From £80",
-    desc: "Performance calibration for suitable modified vehicles, subject to hardware and software checks.",
-    tag: "STAGE 2",
-  },
-  {
-    name: "Stage 1 DSG / TCU File",
-    price: "From £60",
-    desc: "Gearbox calibration for supported DSG and TCU software versions.",
+    name: "DSG / TCU Calibration Review",
+    price: "£60",
+    desc: "Calibration review for supported DSG and TCU software versions.",
     tag: "TRANSMISSION",
   },
   {
-    name: "Custom ECU Files",
-    price: "From £180",
-    desc: "Bespoke ECU file development and calibration work, subject to compatibility and requirements.",
-    tag: "CUSTOM ECU",
-  },
-  {
-    name: "Custom TCU / DSG Files",
-    price: "From £180",
-    desc: "Custom transmission calibration for supported control units and specific requirements.",
-    tag: "CUSTOM TCU",
-  },
-  {
-    name: "Log & File Review",
+    name: "Diagnostic Log / File Review",
     price: "£15",
-    desc: "Diagnostic log and file review with a clear technician report.",
+    desc: "Diagnostic log and file review with a clear technician assessment.",
     tag: "DIAGNOSTICS",
   },
   {
-    name: "DPF / EGR Diagnosis",
+    name: "DPF / EGR Diagnostics",
     price: "£25",
-    desc: "Fault diagnosis and lawful emissions-system repair assessment.",
+    desc: "Emissions-system fault diagnosis and lawful repair assessment.",
     tag: "REPAIR",
+  },
+  {
+    name: "Custom ECU Tuning",
+    price: "From £180",
+    desc: "Bespoke ECU calibration for compatible vehicles, subject to software and hardware checks.",
+    tag: "CUSTOM ECU",
+  },
+  {
+    name: "Custom DSG / TCU Tuning",
+    price: "From £180",
+    desc: "Custom transmission calibration for supported control units and requirements.",
+    tag: "CUSTOM TCU",
+  },
+  {
+    name: "Custom ECU + DSG / TCU Package",
+    price: "Quote required",
+    desc: "Combined ECU and transmission calibration. Receive a confirmed price before payment or work begins.",
+    tag: "COMBINED PACKAGE",
   },
 ];
 
@@ -54,22 +53,28 @@ export default function Home() {
           JCS <span>AUTOMOTIVE TUNING</span>
         </div>
         <div className="row">
-          <Link className="pill" href="/login">Customer login</Link>
-          <Link className="btn" href="/register">Create account</Link>
+          <Link className="pill" href="/login">
+            Customer login
+          </Link>
+          <Link className="btn" href="/register">
+            Create account
+          </Link>
         </div>
       </nav>
 
       <section className="hero">
         <div className="eyebrow">ECU · DSG · PERFORMANCE CALIBRATION</div>
         <h1>
-          Calibration work.<br />
+          Calibration work.
+          <br />
           <em>Handled properly.</em>
         </h1>
         <p>
-          Stage 1 ECU files from £45, Stage 2 from £80,
-          and custom ECU and TCU development from £180.
-          Submit your requirements, track your order and
-          access approved work through your customer account.
+          ECU file services from £45, DSG / TCU calibration reviews from
+          £60, and custom ECU or TCU tuning from £180. Combined ECU and
+          transmission packages are quoted individually. Submit your
+          requirements, track your order and access approved work through
+          your customer account.
         </p>
         <div
           className="row"
@@ -79,18 +84,22 @@ export default function Home() {
             marginTop: 22,
           }}
         >
-          <Link className="btn" href="/register">Start an order →</Link>
-          <Link className="btn secondary" href="/login">Sign in</Link>
+          <Link className="btn" href="/register">
+            Start an order →
+          </Link>
+          <Link className="btn secondary" href="/login">
+            Sign in
+          </Link>
         </div>
       </section>
 
       <section className="grid">
-        {services.map((s) => (
-          <article className="card" key={s.name}>
-            <div className="status">{s.tag}</div>
-            <h2 style={{ marginTop: 14 }}>{s.name}</h2>
-            <div className="price">{s.price}</div>
-            <p>{s.desc}</p>
+        {services.map((service) => (
+          <article className="card" key={service.name}>
+            <div className="status">{service.tag}</div>
+            <h2 style={{ marginTop: 14 }}>{service.name}</h2>
+            <div className="price">{service.price}</div>
+            <p>{service.desc}</p>
             <Link href="/register">Request a quote →</Link>
           </article>
         ))}
@@ -100,11 +109,13 @@ export default function Home() {
         <article className="card">
           <h2>Pricing that fits the job</h2>
           <p>
-            Prices are starting points. Final costs depend on the ECU
-            or TCU, software version, file requirements, supplier costs
-            and job complexity. We confirm the price before work begins.
+            Prices are starting points where stated. Final costs depend
+            on the ECU or TCU, software version, file requirements,
+            supplier costs and job complexity. We confirm the agreed
+            price before work begins.
           </p>
         </article>
+
         <article className="card">
           <h2>Secure file handling</h2>
           <p>
@@ -116,10 +127,9 @@ export default function Home() {
       </section>
 
       <footer>
-        JCS Automotive Tuning · Prices are starting prices and may vary
-        by vehicle, control unit and requirements. All work is subject
-        to compatibility review. Emissions services are limited to
-        diagnostics and lawful repairs.
+        JCS Automotive Tuning · Prices may vary by vehicle, control unit
+        and requirements. All work is subject to compatibility review.
+        Emissions services are limited to diagnostics and lawful repairs.
       </footer>
     </main>
   );
