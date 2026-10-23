@@ -52,3 +52,4 @@ Create a Supabase project:
 
 ## Before launch
 Complete `DEPLOYMENT_CHECKLIST.md`. Do not use real customer ECU/TCU files until security, access control, backups, retention and incident handling have been reviewed and tested.
+Stripe test branch deployment
