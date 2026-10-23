@@ -42,8 +42,8 @@ const fieldStyle: React.CSSProperties = {
   border: "1px solid var(--border, #d1d5db)",
   borderRadius: "8px",
   font: "inherit",
-  color: "var(--text, #111827)",
-  background: "var(--card, #ffffff)",
+  color: "#111827",
+  background: "#ffffff",
   boxSizing: "border-box",
 };
 
@@ -176,7 +176,7 @@ export default function SupportCentre({ orders }: Props) {
               onChange={(event) => setSubject(event.target.value)}
               minLength={5}
               maxLength={200}
-              placeholder="e.g. DSG 1–2 shift issue"
+              placeholder="e.g. DSG 1â€“2 shift issue"
               required
             />
           </label>
@@ -220,7 +220,7 @@ export default function SupportCentre({ orders }: Props) {
               <option value="">Not related to an order</option>
               {orders.map((order) => (
                 <option key={order.id} value={order.id}>
-                  {order.service_name} — {order.vehicle_make}{" "}
+                  {order.service_name} â€” {order.vehicle_make}{" "}
                   {order.vehicle_model} ({order.id.slice(0, 8)})
                 </option>
               ))}
@@ -293,7 +293,7 @@ export default function SupportCentre({ orders }: Props) {
                 )}
 
                 <small>
-                  Ticket {ticket.id.slice(0, 8)} · Created{" "}
+                  Ticket {ticket.id.slice(0, 8)} Â· Created{" "}
                   {dateLabel(ticket.created_at)}
                 </small>
               </article>

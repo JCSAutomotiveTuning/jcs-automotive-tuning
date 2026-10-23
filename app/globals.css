@@ -258,3 +258,14 @@ tr:hover td { background: rgba(40,169,255,.035); }
   .row { flex-wrap: wrap; }
   th, td { padding: 10px 8px; }
 }
+
+/* Support dropdown contrast fix */
+select option {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+}
+
+select:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
