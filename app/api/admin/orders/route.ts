@@ -10,7 +10,6 @@ export const dynamic = "force-dynamic";
 const allowedStatuses = [
   "awaiting_review",
   "awaiting_payment",
-  "paid",
   "in_progress",
   "needs_customer_info",
   "qa_review",
@@ -19,24 +18,52 @@ const allowedStatuses = [
   "failed",
 ] as const;
 
-const updateSchema = z.object({
-  orderId: z.string().uuid(),
-  status: z.enum(allowedStatuses).optional(),
-  adminNotes: z.string().trim().max(3000).nullable().optional(),
-}).refine(
-  (data) => data.status !== undefined || data.adminNotes !== undefined,
-  { message: "Provide a status or admin note to update." }
-);
+const quoteableServices = [
+  "custom_ecu",
+  "custom_tcu",
+  "ecu_tcu_package",
+];
+
+const updateSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    action: z.enum(["update", "save_quote", "request_payment"]).optional(),
+    status: z.enum(allowedStatuses).optional(),
+    adminNotes: z.string().trim().max(3000).nullable().optional(),
+    quoteAmountPence: z.number().int().min(1).max(100000000).optional(),
+  })
+  .refine(
+    (data) => {
+      const action = data.action ?? "update";
+
+      if (action === "save_quote") {
+        return data.quoteAmountPence !== undefined;
+      }
+
+      if (action === "request_payment") {
+        return true;
+      }
+
+      return data.status !== undefined || data.adminNotes !== undefined;
+    },
+    { message: "Provide the fields required for this action." }
+  );
 
 async function requireAdmin() {
   const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
-    return { error: NextResponse.json(
-      { error: "Please sign in first." },
-      { status: 401 }
-    ) };
+    return {
+      error: NextResponse.json(
+        { error: "Please sign in first." },
+        { status: 401 }
+      ),
+    };
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -46,10 +73,12 @@ async function requireAdmin() {
     .single();
 
   if (profileError || profile?.role !== "admin") {
-    return { error: NextResponse.json(
-      { error: "Administrator access required." },
-      { status: 403 }
-    ) };
+    return {
+      error: NextResponse.json(
+        { error: "Administrator access required." },
+        { status: 403 }
+      ),
+    };
   }
 
   return { user };
@@ -57,7 +86,10 @@ async function requireAdmin() {
 
 export async function GET() {
   const auth = await requireAdmin();
-  if ("error" in auth) return auth.error;
+
+  if ("error" in auth) {
+    return auth.error;
+  }
 
   try {
     const admin = createAdminClient();
@@ -72,13 +104,17 @@ export async function GET() {
 
     if (error) {
       console.error("Admin orders query failed:", error.message);
+
       return NextResponse.json(
         { error: "Could not load orders." },
         { status: 500 }
       );
     }
 
-    const userIds = [...new Set((orders ?? []).map((order) => order.user_id))];
+    const userIds = [
+      ...new Set((orders ?? []).map((order) => order.user_id)),
+    ];
+
     let emailByUserId: Record<string, string> = {};
 
     if (userIds.length > 0) {
@@ -88,7 +124,11 @@ export async function GET() {
         .in("id", userIds);
 
       if (profilesError) {
-        console.error("Admin customer lookup failed:", profilesError.message);
+        console.error(
+          "Admin customer lookup failed:",
+          profilesError.message
+        );
+
         return NextResponse.json(
           { error: "Could not load customer details." },
           { status: 500 }
@@ -96,18 +136,23 @@ export async function GET() {
       }
 
       emailByUserId = Object.fromEntries(
-        (profiles ?? []).map((profile) => [profile.id, profile.email])
+        (profiles ?? []).map((profile) => [
+          profile.id,
+          profile.email ?? "Unknown customer",
+        ])
       );
     }
 
     return NextResponse.json({
       orders: (orders ?? []).map((order) => ({
         ...order,
-        customer_email: emailByUserId[order.user_id] ?? "Unknown customer",
+        customer_email:
+          emailByUserId[order.user_id] ?? "Unknown customer",
       })),
     });
   } catch (error) {
     console.error("Admin orders API failed:", error);
+
     return NextResponse.json(
       { error: "Could not load orders." },
       { status: 500 }
@@ -117,11 +162,13 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   const auth = await requireAdmin();
-  if ("error" in auth) return auth.error;
 
-  const parsed = updateSchema.safeParse(
-    await req.json().catch(() => null)
-  );
+  if ("error" in auth) {
+    return auth.error;
+  }
+
+  const body = await req.json().catch(() => null);
+  const parsed = updateSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -132,16 +179,26 @@ export async function PATCH(req: Request) {
 
   try {
     const admin = createAdminClient();
-    const { orderId, status, adminNotes } = parsed.data;
+
+    const {
+      orderId,
+      action = "update",
+      status,
+      adminNotes,
+      quoteAmountPence,
+    } = parsed.data;
 
     const { data: existing, error: lookupError } = await admin
       .from("orders")
-      .select("id,status,admin_notes")
+      .select(
+        "id,service_code,amount_pence,currency,status,payment_status,admin_notes"
+      )
       .eq("id", orderId)
       .maybeSingle();
 
     if (lookupError) {
       console.error("Order lookup failed:", lookupError.message);
+
       return NextResponse.json(
         { error: "Could not find the order." },
         { status: 500 }
@@ -155,19 +212,247 @@ export async function PATCH(req: Request) {
       );
     }
 
+    if (existing.currency !== "GBP") {
+      return NextResponse.json(
+        { error: "Only GBP orders are supported." },
+        { status: 400 }
+      );
+    }
+
+    if (action === "save_quote") {
+      if (!quoteableServices.includes(existing.service_code)) {
+        return NextResponse.json(
+          {
+            error:
+              "Quotes can only be set for custom ECU/TCU services.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (
+        existing.status !== "awaiting_review" ||
+        existing.payment_status !== "unpaid"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Quotes can only be changed while an unpaid order is awaiting review.",
+          },
+          { status: 409 }
+        );
+      }
+
+      const { data: updated, error: updateError } = await admin
+        .from("orders")
+        .update({ amount_pence: quoteAmountPence })
+        .eq("id", orderId)
+        .eq("status", "awaiting_review")
+        .eq("payment_status", "unpaid")
+        .select(
+          "id,amount_pence,status,payment_status,admin_notes,updated_at"
+        )
+        .maybeSingle();
+
+      if (updateError || !updated) {
+        if (updateError) {
+          console.error("Quote save failed:", updateError.message);
+        }
+
+        return NextResponse.json(
+          {
+            error:
+              "Could not save the quote. The order may have changed; refresh and try again.",
+          },
+          { status: updateError ? 500 : 409 }
+        );
+      }
+
+      const { error: auditError } = await admin
+        .from("order_audit")
+        .insert({
+          order_id: orderId,
+          actor_id: auth.user.id,
+          action: "admin_order_updated",
+          details: {
+            action_type: "quote_saved",
+            previous_amount_pence: existing.amount_pence,
+            new_amount_pence: updated.amount_pence,
+          },
+        });
+
+      if (auditError) {
+        console.error("Quote audit insert failed:", auditError.message);
+
+        return NextResponse.json(
+          {
+            error:
+              "The quote was saved, but audit logging failed. Check the server logs.",
+            order: updated,
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ order: updated });
+    }
+
+    if (action === "request_payment") {
+      if (existing.status !== "awaiting_review") {
+        return NextResponse.json(
+          {
+            error:
+              "Only orders awaiting review can be sent for payment.",
+          },
+          { status: 409 }
+        );
+      }
+
+      if (existing.payment_status !== "unpaid") {
+        return NextResponse.json(
+          { error: "This order is not marked as unpaid." },
+          { status: 409 }
+        );
+      }
+
+      if (existing.amount_pence <= 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Save a quote greater than Â£0 before requesting payment.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const { data: updated, error: updateError } = await admin
+        .from("orders")
+        .update({ status: "awaiting_payment" })
+        .eq("id", orderId)
+        .eq("status", "awaiting_review")
+        .eq("payment_status", "unpaid")
+        .gt("amount_pence", 0)
+        .select(
+          "id,amount_pence,status,payment_status,admin_notes,updated_at"
+        )
+        .maybeSingle();
+
+      if (updateError || !updated) {
+        if (updateError) {
+          console.error(
+            "Request payment failed:",
+            updateError.message
+          );
+        }
+
+        return NextResponse.json(
+          {
+            error:
+              "Could not request payment. The order may have changed; refresh and try again.",
+          },
+          { status: updateError ? 500 : 409 }
+        );
+      }
+
+      const { error: auditError } = await admin
+        .from("order_audit")
+        .insert({
+          order_id: orderId,
+          actor_id: auth.user.id,
+          action: "admin_order_updated",
+          details: {
+            action_type: "payment_requested",
+            amount_pence: updated.amount_pence,
+            previous_status: existing.status,
+            new_status: updated.status,
+          },
+        });
+
+      if (auditError) {
+        console.error(
+          "Payment request audit failed:",
+          auditError.message
+        );
+
+        return NextResponse.json(
+          {
+            error:
+              "Payment was requested, but audit logging failed. Check the server logs.",
+            order: updated,
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ order: updated });
+    }
+
+    if (status === "awaiting_payment") {
+      if (existing.amount_pence <= 0) {
+        return NextResponse.json(
+          {
+            error:
+              "An order must have a price greater than Â£0 before payment can be requested.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (existing.payment_status !== "unpaid") {
+        return NextResponse.json(
+          {
+            error:
+              "Only unpaid orders can be moved to awaiting payment.",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Require confirmed payment before progressing paid work.
+    const statusesRequiringPayment = new Set<string>([
+      "in_progress",
+      "qa_review",
+      "completed",
+    ]);
+
+    if (
+      status !== undefined &&
+      statusesRequiringPayment.has(status) &&
+      existing.payment_status !== "paid"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Payment must be confirmed before an order can enter the workshop, quality check or completed state.",
+        },
+        { status: 409 }
+      );
+    }
     const changes: Record<string, string | null> = {};
-    if (status !== undefined) changes.status = status;
-    if (adminNotes !== undefined) changes.admin_notes = adminNotes;
+
+    if (status !== undefined) {
+      changes.status = status;
+    }
+
+    if (adminNotes !== undefined) {
+      changes.admin_notes = adminNotes;
+    }
 
     const { data: updated, error: updateError } = await admin
       .from("orders")
       .update(changes)
       .eq("id", orderId)
-      .select("id,status,admin_notes,updated_at")
-      .single();
+      .select(
+        "id,amount_pence,status,payment_status,admin_notes,updated_at"
+      )
+      .maybeSingle();
 
-    if (updateError) {
-      console.error("Order update failed:", updateError.message);
+    if (updateError || !updated) {
+      if (updateError) {
+        console.error("Order update failed:", updateError.message);
+      }
+
       return NextResponse.json(
         { error: "Could not update the order." },
         { status: 500 }
@@ -181,6 +466,7 @@ export async function PATCH(req: Request) {
         actor_id: auth.user.id,
         action: "admin_order_updated",
         details: {
+          action_type: "order_updated",
           previous_status: existing.status,
           new_status: updated.status,
           previous_admin_notes: existing.admin_notes,
@@ -190,9 +476,11 @@ export async function PATCH(req: Request) {
 
     if (auditError) {
       console.error("Order audit insert failed:", auditError.message);
+
       return NextResponse.json(
         {
-          error: "Order updated, but audit logging failed. Check the audit table before retrying.",
+          error:
+            "The order was updated, but audit logging failed. Check the server logs.",
           order: updated,
         },
         { status: 500 }
@@ -202,6 +490,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ order: updated });
   } catch (error) {
     console.error("Admin order update failed:", error);
+
     return NextResponse.json(
       { error: "Could not update the order." },
       { status: 500 }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import NewOrder from "./new-order";
 import WalletPanel from "./wallet-panel";
+import OrderPaymentButton from "./OrderPaymentButton";
 
 const orderStages = [
   "Received",
@@ -67,8 +68,16 @@ const orderStatus: Record<
   },
 };
 
+function formatPrice(amountPence: number, currency: string) {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+  }).format(amountPence / 100);
+}
+
 export default async function Dashboard() {
   const supabase = createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -76,15 +85,16 @@ export default async function Dashboard() {
   if (!user) redirect("/login");
 
   const [
-    { data: orders },
+    { data: orders, error: ordersError },
     { data: profile },
     { data: wallet },
   ] = await Promise.all([
     supabase
       .from("orders")
       .select(
-        "id,service_code,status,payment_status,created_at,vehicle_make,vehicle_model,engine_code"
+        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code"
       )
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50),
     supabase
@@ -99,32 +109,47 @@ export default async function Dashboard() {
       .maybeSingle(),
   ]);
 
+  if (ordersError) {
+    console.error("Dashboard order lookup failed:", ordersError.message);
+  }
+
   const balancePence = wallet?.balance_pence ?? 0;
 
   return (
     <main className="wrap">
       <nav className="nav">
-        <Link className="brand" href="/">
-          JCS <span>PORTAL</span>
-        </Link>
-        <div className="row">
-          <span className="pill">{user.email}</span>
-          <form action="/auth/signout" method="post">
-            <button className="btn secondary">Sign out</button>
-          </form>
-          {profile?.role === "admin" && (
-            <Link className="btn blue" href="/admin">
-              Admin
-            </Link>
-          )}
-        </div>
-      </nav>
+  <Link className="brand" href="/">
+    JCS <span>PORTAL</span>
+  </Link>
+
+  <div className="row">
+    <span className="pill">{user.email}</span>
+
+    <Link className="btn secondary" href="/dashboard/support">
+      Support Centre
+    </Link>
+
+    <form action="/auth/signout" method="post">
+      <button className="btn secondary" type="submit">
+        Sign out
+      </button>
+    </form>
+
+    {profile?.role === "admin" && (
+      <Link className="btn blue" href="/admin">
+        Admin
+      </Link>
+    )}
+  </div>
+</nav>
 
       <section className="hero">
         <div className="eyebrow">Customer dashboard</div>
+
         <h1 style={{ fontSize: 54 }}>
           Your <em>orders.</em>
         </h1>
+
         <p>
           Submit a new job and track progress here. File uploads are private
           and orders are reviewed before any calibration file is released.
@@ -139,6 +164,7 @@ export default async function Dashboard() {
 
         <section className="card">
           <h2>Order history</h2>
+
           {!orders?.length ? (
             <p>No orders yet. Submit your first job to get started.</p>
           ) : (
@@ -151,12 +177,27 @@ export default async function Dashboard() {
                   closed: true,
                 };
 
+                const validCurrency = o.currency === "GBP";
+                const hasPrice =
+                  Number.isSafeInteger(o.amount_pence) &&
+                  o.amount_pence >= 0 &&
+                  validCurrency;
+
+                const canPay =
+                  o.status === "awaiting_payment" &&
+                  o.payment_status === "unpaid" &&
+                  Number.isSafeInteger(o.amount_pence) &&
+                  o.amount_pence > 0 &&
+                  validCurrency;
+
                 return (
                   <article className="order-entry" key={o.id}>
-                    <div className="row">
+                    <div className="row" style={{ gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
                       <strong>
-                        {o.service_code.replaceAll("_", " ").toUpperCase()}
+                        {o.service_name ||
+                          o.service_code.replaceAll("_", " ").toUpperCase()}
                       </strong>
+
                       <span
                         className={`order-badge${
                           progress.closed
@@ -173,8 +214,14 @@ export default async function Dashboard() {
                     <p className="order-vehicle">
                       {[o.vehicle_make, o.vehicle_model, o.engine_code]
                         .filter(Boolean)
-                        .join(" · ") || "Vehicle details not supplied"}
+                        .join(" Ã‚| ") || "Vehicle details not supplied"}
                     </p>
+
+                    {hasPrice && (
+                      <p className="order-detail">
+                        <strong>Order total: {formatPrice(o.amount_pence, o.currency)}</strong>
+                      </p>
+                    )}
 
                     <p className="order-detail">{progress.detail}</p>
 
@@ -204,9 +251,20 @@ export default async function Dashboard() {
                       </ol>
                     )}
 
+                    {canPay && <OrderPaymentButton orderId={o.id} />}
+
+                    {o.status === "awaiting_review" &&
+                      o.payment_status === "unpaid" &&
+                      o.amount_pence === 0 && (
+                        <p className="order-detail">
+                          Your order is awaiting review and a price confirmation.
+                          No payment is due yet.
+                        </p>
+                      )}
+
                     <small>
-                      Order {o.id.slice(0, 8)} · Payment:{" "}
-                      {o.payment_status.replaceAll("_", " ")} ·{" "}
+                      Order {o.id.slice(0, 8)} Ã‚| Payment:{" "}
+                      {o.payment_status.replaceAll("_", " ")} Ã‚|{" "}
                       {new Date(o.created_at).toLocaleDateString("en-GB")}
                     </small>
                   </article>
@@ -222,7 +280,7 @@ export default async function Dashboard() {
       </div>
 
       <footer>
-        JCS Automotive Tuning · Keep a separate backup of your original ECU/TCU
+        JCS Automotive Tuning Ã‚| Keep a separate backup of your original ECU/TCU
         read.
       </footer>
     </main>
