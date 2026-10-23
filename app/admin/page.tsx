@@ -30,7 +30,6 @@ export default async function AdminDashboard() {
     redirect("/dashboard");
   }
 
-  // Privileged database access is created only after the role check.
   const admin = createAdminClient();
 
   const [customers, openOrders, completedOrders, wallets] =
@@ -89,12 +88,36 @@ export default async function AdminDashboard() {
   ];
 
   const navigation = [
-    ["Customers", "Manage customer accounts"],
-    ["Orders", "Review and process tuning jobs"],
-    ["Tuning Files", "Customer uploads and completed files"],
-    ["Wallet & Credits", "Balances and manual adjustments"],
-    ["Transactions", "Payments and credit history"],
-    ["Settings", "Administrator settings"],
+    {
+      label: "Customers",
+      description: "Manage customer accounts",
+      href: null,
+    },
+    {
+      label: "Orders",
+      description: "Review and process tuning jobs",
+      href: "/admin/orders",
+    },
+    {
+      label: "Tuning Files",
+      description: "Customer uploads and completed files",
+      href: null,
+    },
+    {
+      label: "Wallet & Credits",
+      description: "Balances and manual adjustments",
+      href: null,
+    },
+    {
+      label: "Transactions",
+      description: "Payments and credit history",
+      href: null,
+    },
+    {
+      label: "Settings",
+      description: "Administrator settings",
+      href: null,
+    },
   ];
 
   return (
@@ -122,16 +145,28 @@ export default async function AdminDashboard() {
             >
               Overview
             </a>
-            {navigation.map(([label, description]) => (
-              <div
-                key={label}
-                title={description}
-                className="rounded-lg px-4 py-3 text-sm text-gray-300"
-              >
-                {label}
-                <span className="ml-2 text-xs text-gray-600">Soon</span>
-              </div>
-            ))}
+
+            {navigation.map((item) =>
+              item.href ? (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  title={item.description}
+                  className="block rounded-lg px-4 py-3 text-sm text-gray-300 transition hover:bg-white/5 hover:text-sky-300"
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <div
+                  key={item.label}
+                  title={item.description}
+                  className="rounded-lg px-4 py-3 text-sm text-gray-300"
+                >
+                  {item.label}
+                  <span className="ml-2 text-xs text-gray-600">Soon</span>
+                </div>
+              )
+            )}
           </nav>
         </aside>
 
@@ -171,15 +206,16 @@ export default async function AdminDashboard() {
           <section className="rounded-xl border border-white/10 bg-[#1a1e25] p-6">
             <h2 className="text-xl font-bold">Workshop management</h2>
             <p className="mt-2 text-sm leading-6 text-gray-400">
-              Your dashboard is connected to live database totals. Customer
-              management, order processing, file delivery and credit
-              adjustments will be added as separate, access-controlled tools.
+              Your dashboard is connected to live database totals. Order
+              processing is now available from the sidebar. Customer
+              management, file delivery and credit adjustments will be added
+              as separate, access-controlled tools.
             </p>
             <div className="mt-5 h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
               <div className="h-full w-1/3 rounded-full bg-sky-400" />
             </div>
             <p className="mt-3 text-xs text-gray-500">
-              Dashboard overview ready · Management tools pending
+              Dashboard overview ready · Orders management available
             </p>
           </section>
 
