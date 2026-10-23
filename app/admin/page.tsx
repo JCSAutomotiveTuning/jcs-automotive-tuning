@@ -1,4 +1,4 @@
-
+﻿
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -91,7 +91,7 @@ export default async function AdminDashboard() {
     {
       label: "Customers",
       description: "Manage customer accounts",
-      href: null,
+      href: "/admin/customers",
     },
     {
       label: "Orders",
@@ -215,15 +215,16 @@ export default async function AdminDashboard() {
               <div className="h-full w-1/3 rounded-full bg-sky-400" />
             </div>
             <p className="mt-3 text-xs text-gray-500">
-              Dashboard overview ready · Orders management available
+              Dashboard overview ready Â· Orders management available
             </p>
           </section>
 
           <footer className="mt-8 border-t border-white/10 pt-5 text-xs text-gray-500">
-            JCS Automotive Tuning · Secure administration
+            JCS Automotive Tuning Â· Secure administration
           </footer>
         </section>
       </div>
     </main>
   );
 }
+
