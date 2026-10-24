@@ -231,6 +231,67 @@ export default function Home() {
         @media (prefers-reduced-motion: reduce) {
           .jcs-home *, .jcs-home *::before, .jcs-home *::after { transition: none !important; scroll-behavior: auto !important; }
         }
+        /* JCS logo alignment fix v2 */
+        .jcs-home .topbar {
+          min-height: 114px;
+          gap: 20px;
+        }
+        .jcs-home .identity {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          min-width: 0;
+        }
+        .jcs-home .identity .brand-mark,
+        .jcs-home .identity .mark {
+          box-sizing: border-box;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex: 0 0 104px;
+          width: 104px;
+          height: 104px;
+          min-width: 104px;
+          padding: 0;
+          margin: 0;
+          overflow: hidden;
+          border: 1px solid rgba(142, 217, 255, .16);
+          border-radius: 18px;
+          background: #111820;
+          box-shadow: 0 9px 25px rgba(0,0,0,.18);
+          text-decoration: none;
+        }
+        .jcs-home .identity .brand-mark img,
+        .jcs-home .identity .mark img {
+          display: block;
+          box-sizing: border-box;
+          width: 100% !important;
+          height: 100% !important;
+          max-width: none;
+          padding: 0 !important;
+          margin: 0;
+          border: 0;
+          border-radius: 16px !important;
+          object-fit: contain !important;
+        }
+        .jcs-home .brand-copy { min-width: 0; }
+        @media (max-width: 580px) {
+          .jcs-home .topbar { min-height: 0; }
+          .jcs-home .identity { gap: 12px; }
+          .jcs-home .identity .brand-mark,
+          .jcs-home .identity .mark {
+            flex: 0 0 80px;
+            width: 80px;
+            height: 80px;
+            min-width: 80px;
+            border-radius: 15px;
+          }
+          .jcs-home .identity .brand-mark img,
+          .jcs-home .identity .mark img { border-radius: 13px !important; }
+          .jcs-home .brand-name { font-size: 14px; line-height: 1.3; }
+          .jcs-home .brand-sub { font-size: 9px; letter-spacing: .8px; }
+          .jcs-home .contacts { padding-left: 0; margin-left: 0; }
+        }
       `}</style>
 
       <div className="shell">
