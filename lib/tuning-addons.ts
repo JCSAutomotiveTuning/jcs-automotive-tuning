@@ -10,6 +10,7 @@ export const ADDONS = {
     ["exhaust_flap","Exhaust flap strategy"],
     ["runner_flap","Intake runner flap calibration"],
     ["torque_limit","Torque limit review"],
+    ["sensor_scaling", "Sensor scaling (MAP / MAF / TMAP)"],
   ],
   diesel: [
     ["launch_control","Launch control"],
@@ -17,6 +18,7 @@ export const ADDONS = {
     ["pops_edc15p","EDC15P pops & bangs - price to be confirmed"],
     ["switchable_edc15p","EDC15P switchable maps - price to be confirmed"],
     ["torque_limit","Torque limit review"],
+    ["sensor_scaling", "Sensor scaling (MAP / MAF / TMAP)"],
     ["smoke_review","Smoke / lambda optimisation"],
     ["egr_diagnostics","EGR diagnostics / lawful repair"],
     ["dpf_diagnostics","DPF diagnostics / lawful repair"],
