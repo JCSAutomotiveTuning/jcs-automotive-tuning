@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ADDONS, ADDON_LABELS, type AddonGroup } from "@/lib/tuning-addons";
+import { ADDONS, ADDON_LABELS, addonPrice, type AddonGroup } from "@/lib/tuning-addons";
 
 const SERVICE_OPTIONS = [
   ["ecu_stage1", "ECU Stage 1 file service - GBP 45"],
@@ -34,8 +34,14 @@ export default function NewOrder() {
     ...(showTcu ? ["tcu" as const] : []),
   ];
   const visibleAddons = addons.filter(a => visibleGroups.some(g => a.startsWith(`${g}:`)));
-  const quoteRequired = service === "ecu_tcu_package" || visibleAddons.length > 0 ||
-    service === "custom_ecu" || service === "custom_tcu";
+  const basePrices: Record<string,number> = {
+    ecu_stage1:4500,dsg_tcu:6000,log_review:1500,
+    emissions_diagnostics:2500,custom_ecu:18000,custom_tcu:18000,ecu_tcu_package:0,
+  };
+  const addonTotal = visibleAddons.reduce((sum,key)=>sum+(addonPrice(key)??0),0);
+  const quoteRequired = ["ecu_tcu_package","custom_ecu","custom_tcu"].includes(service) ||
+    visibleAddons.some(key=>addonPrice(key)===null);
+  const pounds=(pence:number)=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(pence/100);
   const toggle = (key:string, checked:boolean) => setAddons(current =>
     checked ? [...new Set([...current,key])] : current.filter(item=>item!==key)
   );
@@ -127,7 +133,7 @@ export default function NewOrder() {
             const key=`${group}:${id}`;
             return <label key={key} style={{display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer"}}>
               <input type="checkbox" checked={addons.includes(key)} onChange={e=>toggle(key,e.target.checked)} disabled={busy}/>
-              <span>{label}</span>
+              <span>{label} <strong>({addonPrice(key)===null?"Price to be confirmed":pounds(addonPrice(key)!)})</strong></span>
             </label>;
           })}
         </div>
@@ -154,7 +160,11 @@ export default function NewOrder() {
       {visibleAddons.length>0
         ? <ul>{visibleAddons.map(key=><li key={key}>{ADDON_LABELS[key]}</li>)}</ul>
         : <p>No optional add-ons selected.</p>}
-      <strong>{quoteRequired?"Quote required - no automatic add-on charges":"Standard service price - subject to review"}</strong>
+      <p>Base service: {pounds(basePrices[service]??0)}</p>
+      <p>Priced add-ons: {pounds(addonTotal)}</p>
+      <strong>{quoteRequired
+        ? `Indicative subtotal: ${pounds((basePrices[service]??0)+addonTotal)} + custom quote items (final price to be confirmed)`
+        : `Calculated total: ${pounds((basePrices[service]??0)+addonTotal)} (subject to review)`}</strong>
       <p style={{fontSize:13}}>Do not upload files containing personal information you lack permission to share. Emissions-related options are diagnostic and lawful-repair services only.</p>
     </section>
     <button className="btn" type="submit" disabled={busy}>{busy?"Submitting...":"Submit tuning request"}</button>

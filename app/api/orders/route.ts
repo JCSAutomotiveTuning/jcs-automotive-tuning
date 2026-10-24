@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isServiceCode, SERVICES } from "@/lib/pricing";
-import { ADDON_LABELS } from "@/lib/tuning-addons";
+import { ADDON_LABELS, addonPrice } from "@/lib/tuning-addons";
 
 const schema = z.object({
   serviceCode: z.string(),
@@ -37,20 +37,26 @@ export async function POST(req: Request) {
   })) return NextResponse.json({error:"Invalid or incompatible add-on selection."},{status:400});
 
   const service=SERVICES[v.serviceCode];
-  const quoteRequired=unique.length>0 || ["custom_ecu","custom_tcu","ecu_tcu_package"].includes(v.serviceCode);
+  const addonTotal=unique.reduce((sum,key)=>sum+(addonPrice(key)??0),0);
+  const quoteRequired=["custom_ecu","custom_tcu","ecu_tcu_package"].includes(v.serviceCode) ||
+    unique.some(key=>addonPrice(key)===null);
   const addonsText=unique.length
     ? "\n\nRequested add-ons (pending compatibility and quotation):\n" +
       unique.map(key=>`- ${ADDON_LABELS[key]} [${key}]`).join("\n")
     : "";
   const fuelText=ecuAllowed && v.fuelType ? `\nFuel type: ${v.fuelType}` : "";
-  const customerNotes=`${v.notes}${fuelText}${addonsText}`.trim();
+  const pricingText=`\nIndicative priced add-ons: GBP ${(addonTotal/100).toFixed(2)}` +
+    (quoteRequired ? "\nFINAL PRICE REQUIRES MANUAL CONFIRMATION - DO NOT TAKE PAYMENT YET." : "");
+  const customerNotes=`${v.notes}${fuelText}${addonsText}${pricingText}`.trim();
   if(customerNotes.length>3000) return NextResponse.json({error:"Please shorten notes or reduce add-on selections."},{status:400});
 
   const {data:order,error}=await supabase.from("orders").insert({
     user_id:user.id,
     service_code:v.serviceCode,
     service_name:service.name,
-    amount_pence:service.pricePence,
+    // Server-calculated price. Custom-quote orders MUST NOT be checked out
+    // before an admin confirms and updates the agreed final amount.
+    amount_pence:service.pricePence+addonTotal,
     currency:"GBP",
     status:"awaiting_review",
     payment_status:"unpaid",
