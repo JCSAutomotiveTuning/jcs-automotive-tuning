@@ -3,9 +3,11 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
 export default function Login() {
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -29,7 +31,7 @@ export default function Login() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -41,7 +43,12 @@ export default function Login() {
         return;
       }
 
-      window.location.assign("/dashboard");
+      const userId = signInData.user?.id;
+      const { data: profile } = userId
+        ? await supabase.from("profiles").select("role").eq("id", userId).maybeSingle()
+        : { data: null };
+      router.replace(profile?.role === "admin" ? "/admin" : profile?.role === "technician" ? "/staff" : "/dashboard");
+      router.refresh();
     } catch {
       setMessage("Something went wrong. Please try again.");
     } finally {
@@ -63,7 +70,7 @@ export default function Login() {
         style={{ maxWidth: 520, margin: "45px auto" }}
       >
         <div className="eyebrow">Welcome back</div>
-        <h1 style={{ fontSize: 44 }}>Customer login</h1>
+        <h1 style={{ fontSize: 44 }}>Portal sign in</h1>
 
         <form onSubmit={submit}>
           <div className="field">

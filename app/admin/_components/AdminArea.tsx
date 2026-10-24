@@ -3,12 +3,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-type Area = "files" | "wallet" | "transactions" | "orders";
+type Area = "files" | "wallet" | "transactions" | "orders" | "staff";
 
 const links: { href: string; title: string; key: Area | "overview" | "orders" | "customers" }[] = [
   { href: "/admin", title: "Overview", key: "overview" },
   { href: "/admin/orders", title: "Orders", key: "orders" },
   { href: "/admin/customers", title: "Customers", key: "customers" },
+  { href: "/admin/staff", title: "Team & assignments", key: "staff" },
   { href: "/admin/files", title: "Tuning files", key: "files" },
   { href: "/admin/wallet", title: "Wallet & credits", key: "wallet" },
   { href: "/admin/transactions", title: "Transactions", key: "transactions" },

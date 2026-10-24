@@ -45,6 +45,12 @@ const navigation = [
     icon: "⇄",
   },
   {
+    label: "Team & Assignments",
+    description: "Staff roles and tuning job assignments",
+    href: "/admin/staff",
+    icon: "⚒",
+  },
+  {
     label: "Settings",
     description: "Administrator settings",
     href: null,
