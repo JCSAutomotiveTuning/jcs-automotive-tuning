@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isServiceCode, SERVICES } from "@/lib/pricing";
-import { ADDON_LABELS, addonPrice } from "@/lib/tuning-addons";
+import { ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE } from "@/lib/tuning-addons";
 
 const schema = z.object({
   serviceCode: z.string(),
@@ -13,6 +13,8 @@ const schema = z.object({
   notes: z.string().trim().max(2500).optional().default(""),
   fuelType: z.enum(["petrol","diesel"]).nullable().optional(),
   addons: z.array(z.string()).max(24).optional().default([]),
+  dtcReview: z.boolean().optional().default(false),
+  dtcCodes: z.string().max(100).optional().default(""),
 });
 
 export async function POST(req: Request) {
@@ -36,8 +38,11 @@ export async function POST(req: Request) {
     return group==="tcu" ? !tcuAllowed : !ecuAllowed || group!==v.fuelType;
   })) return NextResponse.json({error:"Invalid or incompatible add-on selection."},{status:400});
 
+  const dtcCodes = v.dtcReview ? parseDtcCodes(v.dtcCodes) : [];
+  if (v.dtcReview && (!dtcCodes || reviewOnly)) return NextResponse.json({error:"Enter 1-10 valid P or U DTC codes for an ECU or TCU service."},{status:400});
+  if (!v.dtcReview && v.dtcCodes.trim()) return NextResponse.json({error:"Enable DTC review to submit fault codes."},{status:400});
   const service=SERVICES[v.serviceCode];
-  const addonTotal=unique.reduce((sum,key)=>sum+(addonPrice(key)??0),0);
+  const addonTotal=unique.reduce((sum,key)=>sum+(addonPrice(key)??0),0) + (v.dtcReview ? DTC_REVIEW_PRICE_PENCE : 0);
   const quoteRequired=["custom_ecu","custom_tcu","ecu_tcu_package"].includes(v.serviceCode) ||
     unique.some(key=>addonPrice(key)===null);
   const addonsText=unique.length
@@ -45,9 +50,10 @@ export async function POST(req: Request) {
       unique.map(key=>`- ${ADDON_LABELS[key]} [${key}]`).join("\n")
     : "";
   const fuelText=ecuAllowed && v.fuelType ? `\nFuel type: ${v.fuelType}` : "";
+  const dtcText = dtcCodes?.length ? `\nDTC review requested (GBP 25.00 fixed for ${dtcCodes.length} code(s)): ${dtcCodes.join(", ")}\nDTC requests subject to diagnostics, safety and legal compliance.` : "";
   const pricingText=`\nIndicative priced add-ons: GBP ${(addonTotal/100).toFixed(2)}` +
     (quoteRequired ? "\nFINAL PRICE REQUIRES MANUAL CONFIRMATION - DO NOT TAKE PAYMENT YET." : "");
-  const customerNotes=`${v.notes}${fuelText}${addonsText}${pricingText}`.trim();
+  const customerNotes=`${v.notes}${fuelText}${addonsText}${dtcText}${pricingText}`.trim();
   if(customerNotes.length>3000) return NextResponse.json({error:"Please shorten notes or reduce add-on selections."},{status:400});
 
   const {data:order,error}=await supabase.from("orders").insert({

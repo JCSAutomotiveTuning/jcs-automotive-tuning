@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ADDONS, ADDON_LABELS, addonPrice, type AddonGroup } from "@/lib/tuning-addons";
+import { ADDONS, ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE, type AddonGroup } from "@/lib/tuning-addons";
 
 const SERVICE_OPTIONS = [
   ["ecu_stage1", "ECU Stage 1 file service - GBP 45"],
@@ -24,6 +24,8 @@ export default function NewOrder() {
   const [fuel,setFuel] = useState<"petrol"|"diesel">("petrol");
   const [addons,setAddons] = useState<string[]>([]);
   const [notes,setNotes] = useState("");
+  const [dtcReview,setDtcReview] = useState(false);
+  const [dtcInput,setDtcInput] = useState("");
 
   const tcuService = service === "dsg_tcu" || service === "custom_tcu";
   const reviewOnly = service === "log_review" || service === "emissions_diagnostics";
@@ -38,7 +40,9 @@ export default function NewOrder() {
     ecu_stage1:4500,dsg_tcu:6000,log_review:1500,
     emissions_diagnostics:2500,custom_ecu:18000,custom_tcu:18000,ecu_tcu_package:0,
   };
-  const addonTotal = visibleAddons.reduce((sum,key)=>sum+(addonPrice(key)??0),0);
+  const dtcCodes = dtcReview ? parseDtcCodes(dtcInput) : [];
+  const dtcTotal = dtcReview && dtcCodes ? DTC_REVIEW_PRICE_PENCE : 0;
+  const addonTotal = visibleAddons.reduce((sum,key)=>sum+(addonPrice(key)??0),0) + dtcTotal;
   const quoteRequired = ["ecu_tcu_package","custom_ecu","custom_tcu"].includes(service) ||
     visibleAddons.some(key=>addonPrice(key)===null);
   const pounds=(pence:number)=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(pence/100);
@@ -50,6 +54,7 @@ export default function NewOrder() {
     e.preventDefault();
     if (busy) return;
     setMessage("");
+    if (dtcReview && !dtcCodes) { setMessage("Enter 1-10 valid P or U fault codes (e.g. P0401, U0100)."); return; }
     if (file) {
       const ext=file.name.split(".").pop()?.toLowerCase();
       if (!ext || !EXTENSIONS.includes(ext)) { setMessage("Unsupported file type."); return; }
@@ -63,7 +68,7 @@ export default function NewOrder() {
       delete payload.file;
       const res=await fetch("/api/orders",{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({...payload,serviceCode:service,notes,addons:visibleAddons,fuelType:showEcu?fuel:null}),
+        body:JSON.stringify({...payload,serviceCode:service,notes,addons:visibleAddons,fuelType:showEcu?fuel:null,dtcReview,dtcCodes:dtcReview?dtcInput:""}),
       });
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Could not create order.");
@@ -92,7 +97,7 @@ export default function NewOrder() {
         ? `Request ${orderId} submitted. JCS will review compatibility and confirm your quote.`
         : `Order ${orderId} submitted for review.`);
       e.currentTarget.reset();
-      setFile(null);setAddons([]);setNotes("");
+      setFile(null);setAddons([]);setNotes("");setDtcReview(false);setDtcInput("");
     } catch(error) {
       const reason=error instanceof Error?error.message:"Unexpected error.";
       setMessage(orderId
@@ -138,6 +143,19 @@ export default function NewOrder() {
           })}
         </div>
       </fieldset>)}
+      <fieldset style={{border:"1px solid #64748b55",borderRadius:12,padding:16,marginTop:12}}>
+        <legend style={{fontWeight:700,padding:"0 8px"}}>DTC code review</legend>
+        <label style={{display:"flex",gap:10,alignItems:"center"}}>
+          <input type="checkbox" checked={dtcReview} onChange={e=>setDtcReview(e.target.checked)} disabled={busy}/>
+          Request DTC investigation / calibration review ({pounds(DTC_REVIEW_PRICE_PENCE)} fixed per request)
+        </label>
+        {dtcReview && <div className="field" style={{marginTop:12}}>
+          <label htmlFor="dtcCodes">P / U fault codes (1-10, separated by commas or spaces)</label>
+          <textarea id="dtcCodes" value={dtcInput} onChange={e=>setDtcInput(e.target.value)}
+            placeholder="P0401, P2008, U0100" rows={2} maxLength={100} required disabled={busy}/>
+          <small>{dtcCodes ? `${dtcCodes.length} unique code(s) - ${pounds(dtcTotal)} total` : "Enter valid five-character P or U codes."} Review does not guarantee removal; safety and legal compliance apply.</small>
+        </div>}
+      </fieldset>
       <p style={{fontSize:13,opacity:.8}}>Add-ons are requests, not guaranteed features. Availability, safety and legal road-use compliance are reviewed before work begins.</p>
     </section>}
     <section>
@@ -161,7 +179,8 @@ export default function NewOrder() {
         ? <ul>{visibleAddons.map(key=><li key={key}>{ADDON_LABELS[key]}</li>)}</ul>
         : <p>No optional add-ons selected.</p>}
       <p>Base service: {pounds(basePrices[service]??0)}</p>
-      <p>Priced add-ons: {pounds(addonTotal)}</p>
+      <p>Priced add-ons including DTC review: {pounds(addonTotal)}</p>
+      {dtcReview && <p>DTC codes: {dtcCodes?.join(", ") || "Invalid / missing codes"}</p>}
       <strong>{quoteRequired
         ? `Indicative subtotal: ${pounds((basePrices[service]??0)+addonTotal)} + custom quote items (final price to be confirmed)`
         : `Calculated total: ${pounds((basePrices[service]??0)+addonTotal)} (subject to review)`}</strong>
