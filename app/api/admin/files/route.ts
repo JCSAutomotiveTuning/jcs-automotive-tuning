@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 async function getAdmin() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { response: NextResponse.json({ error: "Sign in required." }, { status: 401 }) };
 
@@ -54,3 +54,4 @@ export async function GET() {
     })),
   });
 }
+

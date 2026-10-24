@@ -1,5 +1,7 @@
- @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+﻿ @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
+@layer base {
 :root {
   --bg: #080b10;
   --panel: #111722;
@@ -381,3 +383,15 @@ select:focus {
     font-size: 9px;
   }
 }
+
+
+/* JCS ADMIN TYPOGRAPHY FIX */
+main.jcs-admin-dashboard h1,
+main.jcs-admin-dashboard h2,
+main.jcs-admin-dashboard h3 {
+  font-family: Inter, system-ui, sans-serif;
+  text-transform: none;
+}
+/* END JCS ADMIN TYPOGRAPHY FIX */
+}
+
