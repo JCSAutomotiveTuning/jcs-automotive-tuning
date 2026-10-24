@@ -169,8 +169,25 @@ export default async function Dashboard() {
         </p>
       </section>
 
+      <div style={{ margin: "20px 0" }}>
+  <a
+    href="#upload-tuning-file"
+    className="btn"
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      padding: "14px 24px",
+      fontWeight: 700,
+      textDecoration: "none",
+    }}
+  >
+    ↑ Upload Tuning File
+  </a>
+</div>
       <div className="two">
-        <section className="card">
+        <section id="upload-tuning-file" className="card" style={{ scrollMarginTop: 24 }}>
           <h2>Submit a job</h2>
           <NewOrder />
         </section>
