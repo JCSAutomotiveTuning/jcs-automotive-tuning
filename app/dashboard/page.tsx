@@ -5,6 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import NewOrder from "./new-order";
 import WalletPanel from "./wallet-panel";
 import OrderPaymentButton from "./OrderPaymentButton";
+import LiveClock from "@/components/LiveClock";
+
+// @next-codemod-ignore Cache Components adoption: this segment temporarily allows blocking.
+// Remove this opt-out after verifying the segment passes validation without it.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 
 const orderStages = [
   "Received",
@@ -76,7 +81,7 @@ function formatPrice(amountPence: number, currency: string) {
 }
 
 export default async function Dashboard() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -123,6 +128,7 @@ export default async function Dashboard() {
   </Link>
 
   <div className="row">
+        <LiveClock />
     <span className="pill">{user.email}</span>
 
     <Link className="btn secondary" href="/dashboard/support">
@@ -191,7 +197,7 @@ export default async function Dashboard() {
                   validCurrency;
 
                 return (
-                  <article className="order-entry" key={o.id}>
+                  <article className="order-entry order-card" key={o.id}>
                     <div className="row" style={{ gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
                       <strong>
                         {o.service_name ||
@@ -214,12 +220,12 @@ export default async function Dashboard() {
                     <p className="order-vehicle">
                       {[o.vehicle_make, o.vehicle_model, o.engine_code]
                         .filter(Boolean)
-                        .join(" Ã‚| ") || "Vehicle details not supplied"}
+                        .join(" · ") || "Vehicle details not supplied"}
                     </p>
 
                     {hasPrice && (
-                      <p className="order-detail">
-                        <strong>Order total: {formatPrice(o.amount_pence, o.currency)}</strong>
+                      <p className="order-total">
+                        <strong>Total {formatPrice(o.amount_pence, o.currency)}</strong>
                       </p>
                     )}
 
@@ -262,11 +268,19 @@ export default async function Dashboard() {
                         </p>
                       )}
 
-                    <small>
-                      Order {o.id.slice(0, 8)} Ã‚| Payment:{" "}
-                      {o.payment_status.replaceAll("_", " ")} Ã‚|{" "}
-                      {new Date(o.created_at).toLocaleDateString("en-GB")}
-                    </small>
+                    <div className="order-meta">
+                      <span>Order #{o.id.slice(0, 8)}</span>
+                      <span
+                        className={`payment-badge ${
+                          o.payment_status === "paid" ? "is-paid" : "is-unpaid"
+                        }`}
+                      >
+                        Payment: {o.payment_status.replaceAll("_", " ")}
+                      </span>
+                      <span>
+                        {new Date(o.created_at).toLocaleDateString("en-GB")}
+                      </span>
+                    </div>
                   </article>
                 );
               })}
@@ -280,7 +294,7 @@ export default async function Dashboard() {
       </div>
 
       <footer>
-        JCS Automotive Tuning Ã‚| Keep a separate backup of your original ECU/TCU
+        JCS Automotive Tuning Ãƒâ€š| Keep a separate backup of your original ECU/TCU
         read.
       </footer>
     </main>
