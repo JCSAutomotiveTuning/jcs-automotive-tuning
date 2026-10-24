@@ -68,6 +68,42 @@ const handledCheckoutEvents = new Set<string>([
 
   const admin = createAdminClient();
 
+  // VAG technical information requests: separate from existing tuning and wallet payments.
+  if (session.metadata?.type === "technical_request") {
+    const requestId = session.metadata.request_id;
+    const userId = session.metadata.user_id;
+    if (!requestId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId) || !userId || session.client_reference_id !== userId || session.currency !== "gbp" || session.amount_total !== 1500) {
+      return NextResponse.json({error:"Invalid technical payment reference"},{status:400});
+    }
+    const {data:r,error:lookupError}=await admin.from("technical_requests").select("id,user_id,amount_pence,currency,payment_status,status").eq("id",requestId).maybeSingle();
+    if (lookupError) return NextResponse.json({error:"Technical payment lookup failed"},{status:500});
+    if (!r || r.user_id!==userId || r.amount_pence!==1500 || r.currency!=="GBP") return NextResponse.json({error:"Technical payment mismatch"},{status:409});
+    if (r.payment_status === "paid") {
+      const { data: existing, error: existingError } = await admin
+        .from("technical_requests")
+        .select("stripe_session_id")
+        .eq("id", requestId)
+        .maybeSingle();
+
+      if (existingError || existing?.stripe_session_id !== session.id) {
+        return NextResponse.json(
+          { error: "Technical payment session mismatch" },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json({ received: true });
+    }
+    if (r.payment_status!=="unpaid" || r.status!=="awaiting_payment") return NextResponse.json({error:"Technical payment requires reconciliation"},{status:409});
+    const {data:updated,error:updateError}=await admin.from("technical_requests").update({payment_status:"paid",status:"paid",stripe_session_id:session.id,updated_at:new Date().toISOString()}).eq("id",requestId).eq("user_id",userId).eq("payment_status","unpaid").eq("status","awaiting_payment").select("id").maybeSingle();
+    if (updateError) return NextResponse.json({error:"Technical payment update failed"},{status:500});
+    if (!updated) {
+      const {data:latest}=await admin.from("technical_requests").select("payment_status,stripe_session_id").eq("id",requestId).maybeSingle();
+      if(latest?.payment_status!=="paid" || latest.stripe_session_id!==session.id)return NextResponse.json({error:"Technical payment reconciliation required"},{status:500});
+    }
+    return NextResponse.json({received:true});
+  }
+
   // Customer order payments
   if (session.metadata?.type === "order_payment") {
     const orderId = session.metadata.order_id;
@@ -214,7 +250,7 @@ const handledCheckoutEvents = new Set<string>([
     return NextResponse.json({ received: true });
   }
 
-  // Existing Â£20 wallet top-up flow â€” preserved.
+  // Existing Ã‚Â£20 wallet top-up flow Ã¢â‚¬â€ preserved.
   if (
     session.amount_total !== 2000 ||
     session.currency !== "gbp" ||

@@ -127,7 +127,7 @@ export default async function Dashboard() {
     <>
     <PriceVisibilityStyles />
     <main className="wrap">
-      <nav className="nav">
+      <nav className="nav"><Link className="btn secondary" href="/dashboard/technical-requests">VAG Parts &amp; Wiring (£15)</Link>
   <Link className="brand" href="/">
     JCS <span>PORTAL</span>
   </Link>

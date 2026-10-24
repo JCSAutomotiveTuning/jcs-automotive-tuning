@@ -16,6 +16,7 @@ const money = (pence: number) =>
   }).format(pence / 100);
 
 const navigation = [
+  { label: "Technical Requests", description: "VAG parts and wiring tickets", href: "/admin/technical-requests", icon: "⌁" },
   {
     label: "Customers",
     description: "Manage customer accounts",
