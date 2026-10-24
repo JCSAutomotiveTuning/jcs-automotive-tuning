@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 
 // @next-codemod-ignore Cache Components adoption: this segment temporarily allows blocking.
 // Remove this opt-out after verifying the segment passes validation without it.
@@ -52,6 +52,41 @@ const services = [
 export default function Home() {
   return (
     <main className="wrap">
+<section
+  id="jcs-home-upload"
+  style={{
+    margin: "24px 0",
+    padding: "24px",
+    borderRadius: "16px",
+    border: "1px solid #3b82f6",
+    background: "linear-gradient(135deg, #0f172a, #1e3a5f)",
+    color: "#ffffff",
+    textAlign: "center",
+  }}
+>
+  <h2 style={{ marginBottom: 8, color: "#ffffff" }}>
+    Ready to tune your vehicle?
+  </h2>
+
+  <p style={{ marginBottom: 20, color: "#cbd5e1" }}>
+    Upload your ECU or TCU file and select your tuning options.
+  </p>
+
+  <a
+    href="/dashboard#upload-tuning-file"
+    style={{
+      display: "inline-block",
+      padding: "14px 28px",
+      borderRadius: "10px",
+      background: "#38bdf8",
+      color: "#082f49",
+      fontWeight: 800,
+      textDecoration: "none",
+    }}
+  >
+    ↑ Upload Tuning File
+  </a>
+</section>
       <nav className="nav">
         <div className="brand">
           JCS <span>AUTOMOTIVE TUNING</span>
