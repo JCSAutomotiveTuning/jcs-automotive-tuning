@@ -187,10 +187,9 @@ export default async function AdminDashboard() {
         {/* Sidebar */}
         <aside className="border-b border-white/[0.08] bg-[#0d121b] md:sticky md:top-0 md:flex md:h-screen md:w-[260px] md:shrink-0 md:flex-col md:border-b-0 md:border-r">
           <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-5 md:px-6 md:py-7">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-400/10 text-xl font-black tracking-tight">
-              <span className="text-sky-400">JC</span>
-              <span className="text-amber-400">S</span>
-            </div>
+            <Link href="/" aria-label="JCS Automotive Tuning homepage">
+  <img src="/jcs-automotive-logo.webp" alt="JCS Automotive Tuning logo" width={64} height={64} className="h-16 w-16 shrink-0 rounded-xl object-contain" />
+</Link>
             <div>
               <p className="text-sm font-extrabold tracking-wide text-white">
                 JCS AUTOMOTIVE
@@ -294,9 +293,9 @@ export default async function AdminDashboard() {
           <header className="sticky top-0 z-20 border-b border-white/10 bg-[#090d14]/90 px-5 py-4 backdrop-blur-2xl sm:px-8 lg:px-10">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-400/10 text-lg font-black text-sky-300">
-                  J
-                </div>
+                <Link href="/" aria-label="JCS Automotive Tuning homepage">
+  <img src="/jcs-automotive-logo.webp" alt="JCS Automotive Tuning logo" width={44} height={44} className="h-11 w-11 rounded-xl object-contain" />
+</Link>
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-sky-400">
                     JCS Automotive Tuning
