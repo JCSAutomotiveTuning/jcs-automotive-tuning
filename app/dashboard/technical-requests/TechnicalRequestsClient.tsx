@@ -9,14 +9,43 @@ export default function TechnicalRequestsClient(){
  const [form,setForm]=useState({service_type:"parts",registration:"",make:"Volkswagen",model:"",model_year:String(new Date().getFullYear()),vin:"",engine_code:"",module_reference:"",description:""});
  const change=(key:string,value:string)=>setForm(f=>({...f,[key]:value}));
  async function load(){const res=await fetch("/api/technical-requests",{cache:"no-store"});const data=await res.json();if(res.ok)setItems(data.requests||[]);else setError(data.error||"Unable to load requests");}
- useEffect(()=>{void load();},[]);
+ useEffect(() => {
+  let active = true;
+
+  async function fetchInitialData() {
+    try {
+      const response = await fetch(
+        "/api/technical-requests",
+        { cache: "no-store" }
+      );
+
+      const data = await response.json();
+
+      if (!active) return;
+
+      if (response.ok) {
+        setItems(data.requests || []);
+      } else {
+        setError(data.error || "Unable to load requests");
+      }
+    } catch {
+      if (active) setError("Unable to load requests");
+    }
+  }
+
+  void fetchInitialData();
+
+  return () => {
+    active = false;
+  };
+}, []);
  async function create(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{const res=await fetch("/api/technical-requests",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});const data=await res.json();if(!res.ok)throw Error(data.error||"Unable to create ticket");await load();await pay(data.id);}catch(e){setError(e instanceof Error?e.message:"Request failed");}finally{setBusy(false);}}
  async function pay(id:string){setBusy(true);try{const res=await fetch("/api/technical-requests/checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id})});const data=await res.json();if(!res.ok||!data.url)throw Error(data.error||"Checkout unavailable");window.location.assign(data.url);}catch(e){setError(e instanceof Error?e.message:"Checkout failed");setBusy(false);}}
  async function select(id:string){setSelected(id);const [mr,fr]=await Promise.all([fetch(`/api/technical-requests/${id}/messages`),fetch(`/api/technical-requests/${id}/files`)]);if(mr.ok)setMessages((await mr.json()).messages||[]);if(fr.ok){const fileData=await fr.json();setFiles(f=>({...f,[id]:fileData.files||[]}));}}
  async function send(){if(!selected||!message.trim())return;setBusy(true);const res=await fetch(`/api/technical-requests/${selected}/messages`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:message})});if(res.ok){setMessage("");await select(selected);}else setError((await res.json()).error||"Message failed");setBusy(false);}
  return <div style={{display:"grid",gap:24,paddingBottom:50}}>
- <section className="card" style={{padding:20}}><h2>New technical request — £15</h2><p>One vehicle and one defined parts or wiring enquiry per ticket. Use separate tickets for both services.</p><form onSubmit={create} style={{display:"grid",gap:12}}>
- <label>Service<select className="input" value={form.service_type} onChange={e=>change("service_type",e.target.value)}><option value="parts">Parts identification — £15</option><option value="wiring">Wiring diagram / pinout — £15</option></select></label>
+ <section className="card" style={{padding:20}}><h2>New technical request â€” Â£15</h2><p>One vehicle and one defined parts or wiring enquiry per ticket. Use separate tickets for both services.</p><form onSubmit={create} style={{display:"grid",gap:12}}>
+ <label>Service<select className="input" value={form.service_type} onChange={e=>change("service_type",e.target.value)}><option value="parts">Parts identification â€” Â£15</option><option value="wiring">Wiring diagram / pinout â€” Â£15</option></select></label>
  <label>UK registration<input className="input" required maxLength={12} value={form.registration} onChange={e=>change("registration",e.target.value)} placeholder="AB12 CDE"/></label>
  <label>Make<select className="input" value={form.make} onChange={e=>change("make",e.target.value)}>{["Volkswagen","Audi","SEAT","Skoda","CUPRA"].map(m=><option key={m}>{m}</option>)}</select></label>
  <label>Model<input className="input" required maxLength={100} value={form.model} onChange={e=>change("model",e.target.value)} placeholder="Golf Mk5"/></label>
@@ -25,9 +54,9 @@ export default function TechnicalRequestsClient(){
  <label>Engine code (optional)<input className="input" maxLength={60} value={form.engine_code} onChange={e=>change("engine_code",e.target.value)}/></label>
  <label>Module / part number (optional)<input className="input" maxLength={100} value={form.module_reference} onChange={e=>change("module_reference",e.target.value)}/></label>
  <label>What do you need?<textarea className="input" required minLength={10} maxLength={5000} rows={4} value={form.description} onChange={e=>change("description",e.target.value)} placeholder="Describe the component, module, connector or part numbers needed."/></label>
- <p style={{fontSize:13}}>You will be redirected to Stripe to pay £15. Information is researched manually; availability and exact fitment cannot be guaranteed from registration alone. Only authorised technical information can be supplied.</p>
- <button className="btn" disabled={busy}>{busy?"Please wait…":"Create ticket and pay £15"}</button></form></section>
- <section className="card" style={{padding:20}}><h2>Your requests</h2>{items.length===0?<p>No requests yet.</p>:items.map(r=><div key={r.id} style={{borderTop:"1px solid #7775",padding:"14px 0"}}><strong>{r.service_type==="parts"?"Parts identification":"Wiring request"}</strong> — {r.make} {r.model} ({r.registration})<p>Status: {r.status.replaceAll("_"," ")} · Payment: {r.payment_status} · Ticket {r.id.slice(0,8)}</p><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{r.payment_status==="unpaid"&&r.status==="awaiting_payment"&&<button className="btn" disabled={busy} onClick={()=>pay(r.id)}>Pay £15</button>}<button className="btn secondary" onClick={()=>select(r.id)}>Messages &amp; files</button></div>{selected===r.id&&<div style={{paddingTop:12}}><h3>Messages</h3>{messages.map(m=><p key={m.id}><strong>{m.sender_role}:</strong> {m.body}</p>)}{r.payment_status==="paid"&&r.status!=="cancelled"&&<><textarea className="input" rows={2} value={message} onChange={e=>setMessage(e.target.value)} placeholder="Reply to JCS"/><button className="btn secondary" disabled={busy||!message.trim()} onClick={send}>Send message</button></>}{(files[r.id]||[]).length>0&&<><h3>Deliverables</h3>{r.status==="completed"&&r.payment_status==="paid"?(files[r.id]||[]).map(f=><p key={f.id}><a href={`/api/technical-requests/files/${f.id}`}>{f.file_name}</a></p>):<p>Files become available when the ticket is completed.</p>}</>}</div>}</div>)}</section>
+ <p style={{fontSize:13}}>You will be redirected to Stripe to pay Â£15. Information is researched manually; availability and exact fitment cannot be guaranteed from registration alone. Only authorised technical information can be supplied.</p>
+ <button className="btn" disabled={busy}>{busy?"Please waitâ€¦":"Create ticket and pay Â£15"}</button></form></section>
+ <section className="card" style={{padding:20}}><h2>Your requests</h2>{items.length===0?<p>No requests yet.</p>:items.map(r=><div key={r.id} style={{borderTop:"1px solid #7775",padding:"14px 0"}}><strong>{r.service_type==="parts"?"Parts identification":"Wiring request"}</strong> â€” {r.make} {r.model} ({r.registration})<p>Status: {r.status.replaceAll("_"," ")} Â· Payment: {r.payment_status} Â· Ticket {r.id.slice(0,8)}</p><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{r.payment_status==="unpaid"&&r.status==="awaiting_payment"&&<button className="btn" disabled={busy} onClick={()=>pay(r.id)}>Pay Â£15</button>}<button className="btn secondary" onClick={()=>select(r.id)}>Messages &amp; files</button></div>{selected===r.id&&<div style={{paddingTop:12}}><h3>Messages</h3>{messages.map(m=><p key={m.id}><strong>{m.sender_role}:</strong> {m.body}</p>)}{r.payment_status==="paid"&&r.status!=="cancelled"&&<><textarea className="input" rows={2} value={message} onChange={e=>setMessage(e.target.value)} placeholder="Reply to JCS"/><button className="btn secondary" disabled={busy||!message.trim()} onClick={send}>Send message</button></>}{(files[r.id]||[]).length>0&&<><h3>Deliverables</h3>{r.status==="completed"&&r.payment_status==="paid"?(files[r.id]||[]).map(f=><p key={f.id}><a href={`/api/technical-requests/files/${f.id}`}>{f.file_name}</a></p>):<p>Files become available when the ticket is completed.</p>}</>}</div>}</div>)}</section>
  {error&&<p role="alert" style={{color:"#ff7777"}}>{error}</p>}
  </div>;
 }

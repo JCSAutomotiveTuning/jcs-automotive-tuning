@@ -7,3 +7,47 @@ out/
 .DS_Store
 .vercel
 .env*
+
+# JCS local backups and temporary files
+*.bak
+*.backup
+*.backup.*
+*.before-*
+*.encoding-backup
+*.logo-backup*
+*.replace-backup
+*.tmp
+*.tsbuildinfo
+
+# Local project backups
+.jcs-redesign-backup-*/
+_jcs_sms_backup_*/
+*-redesign-backup-*
+JCS_RustDesk_Remote_Support_Patch/
+
+# Local administrative scripts
+/scripts/reconcile-technical-payment.cjs
+
+# Local reports and temporary notes
+JCS_FULL_AUDIT.txt
+supabase-callers.txt
+admin-orders-manager.txt
+
+# Local executable downloads
+rustdesk-*.exe
+
+# Backup of this ignore file
+.gitignore.before-jcs-cleanup.bak
+
+# Additional dated backups
+*.backup-*
+*.clock-backup-*
+
+# Unintended PowerShell output files
+/e -File *
+/pabase = createClient();
+/t *CURRENT BRANCH*
+/t *STAGED FILES*
+
+# Additional local backup files
+*.logo-replace-backup
