@@ -395,3 +395,16 @@ main.jcs-admin-dashboard h3 {
 /* END JCS ADMIN TYPOGRAPHY FIX */
 }
 
+
+/* JCS Price Visibility */
+.jcs-money-hidden {
+  display: none;
+}
+
+.jcs-prices-hidden .jcs-money-real {
+  display: none !important;
+}
+
+.jcs-prices-hidden .jcs-money-hidden {
+  display: inline !important;
+}
