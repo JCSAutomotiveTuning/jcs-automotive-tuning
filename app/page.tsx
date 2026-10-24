@@ -52,6 +52,40 @@ const services = [
 export default function Home() {
   return (
     <main className="wrap">
+<section id="jcs-home-email" style={{ margin: "20px 0", textAlign: "center" }}>
+  <a
+    href="mailto:tuningatjcs@gmail.com"
+    style={{
+      display: "inline-block",
+      padding: "14px 24px",
+      borderRadius: 10,
+      background: "#2563eb",
+      color: "#ffffff",
+      fontWeight: 700,
+      textDecoration: "none"
+    }}
+  >
+    Email JCS Automotive Tuning
+  </a>
+</section>
+<section id="jcs-home-whatsapp" style={{ margin: "20px 0", textAlign: "center" }}>
+  <a
+    href="https://wa.me/447501941328"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      display: "inline-block",
+      padding: "14px 24px",
+      borderRadius: 10,
+      background: "#25D366",
+      color: "#062d16",
+      fontWeight: 800,
+      textDecoration: "none"
+    }}
+  >
+    Chat With Us on WhatsApp
+  </a>
+</section>
 <section
   id="jcs-home-upload"
   style={{
