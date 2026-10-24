@@ -1,6 +1,6 @@
-
 "use client";
 
+import { MaskedAmount } from "@/components/PriceVisibility";
 import { useState } from "react";
 
 type WalletPanelProps = {
@@ -41,10 +41,10 @@ export default function WalletPanel({ balancePence }: WalletPanelProps) {
       <h2>Your wallet</h2>
       <p>
         Available credit:{" "}
-        <strong>£{(balancePence / 100).toFixed(2)}</strong>
+        <strong><MaskedAmount>Â£{(balancePence / 100).toFixed(2)}</MaskedAmount></strong>
       </p>
       <p>
-        Add £20 securely through Stripe. Each new file submission costs £20.
+        Add Â£20 securely through Stripe. Each new file submission costs Â£20.
       </p>
       <button
         className="btn blue"
@@ -52,7 +52,7 @@ export default function WalletPanel({ balancePence }: WalletPanelProps) {
         onClick={topUp}
         disabled={loading}
       >
-        {loading ? "Connecting to Stripe..." : "Top up £20"}
+        {loading ? "Connecting to Stripe..." : "Top up Â£20"}
       </button>
       {error && <p role="alert">{error}</p>}
     </section>

@@ -1,0 +1,9 @@
+"use client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+type RequestItem={id:string;user_id:string;subject:string;details:string;rustdesk_id:string|null;status:string;admin_notes:string|null;created_at:string};
+const statuses=["pending","accepted","in_progress","completed","cancelled"];
+export default function RemoteSupportManager({requests}:{requests:RequestItem[]}){const router=useRouter();const [busy,setBusy]=useState<string|null>(null);const [message,setMessage]=useState("");
+ async function update(id:string,status:string){setBusy(id);setMessage("");try{const res=await fetch("/api/admin/remote-support",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,status})});const j=await res.json();if(!res.ok)throw new Error(j.error||"Update failed");router.refresh()}catch(e){setMessage(e instanceof Error?e.message:"Update failed")}finally{setBusy(null)}}
+ return <div className="space-y-3">{message&&<p role="alert" className="text-amber-300">{message}</p>}{requests.length===0&&<p>No requests yet.</p>}{requests.map(r=><article key={r.id} className="rounded-xl border border-white/10 bg-[#101620] p-5 space-y-2"><div className="flex flex-wrap justify-between gap-2"><strong>{r.subject}</strong><span className="text-xs text-slate-400">{new Date(r.created_at).toLocaleString("en-GB")}</span></div><p className="break-all text-xs text-slate-400">Customer: {r.user_id}</p><p className="whitespace-pre-wrap text-sm text-slate-300">{r.details}</p><p className="text-sm">RustDesk ID: <strong>{r.rustdesk_id||"Not provided"}</strong></p><label className="block text-sm">Status <select aria-label={`Status for ${r.subject}`} defaultValue={r.status} disabled={busy===r.id} onChange={e=>update(r.id,e.target.value)} className="ml-2 rounded-lg border border-white/20 bg-[#090d14] p-2">{statuses.map(x=><option key={x} value={x}>{x.replaceAll("_"," ")}</option>)}</select></label></article>)}</div>;
+}

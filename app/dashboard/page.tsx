@@ -1,3 +1,6 @@
+import { PriceVisibilityToggle, MaskedAmount } from "@/components/PriceVisibility";
+import PriceVisibilityStyles from "@/components/PriceVisibilityStyles";
+import LoyaltyBalance from "@/components/LoyaltyBalance";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -121,6 +124,8 @@ export default async function Dashboard() {
   const balancePence = wallet?.balance_pence ?? 0;
 
   return (
+    <>
+    <PriceVisibilityStyles />
     <main className="wrap">
       <nav className="nav">
   <Link className="brand" href="/">
@@ -129,8 +134,10 @@ export default async function Dashboard() {
 
   <div className="row">
         <LiveClock />
+    <PriceVisibilityToggle />
     <span className="pill">{user.email}</span>
 
+    <Link className="btn secondary" href="/dashboard/dtc">DTC Lookup</Link>
     <Link className="btn secondary" href="/dashboard/support">
       Support Centre
     </Link>
@@ -225,7 +232,7 @@ export default async function Dashboard() {
 
                     {hasPrice && (
                       <p className="order-total">
-                        <strong>Total {formatPrice(o.amount_pence, o.currency)}</strong>
+                        <strong>Total <MaskedAmount>{formatPrice(o.amount_pence, o.currency)}</MaskedAmount></strong>
                       </p>
                     )}
 
@@ -291,6 +298,7 @@ export default async function Dashboard() {
 
       <div style={{ marginTop: 24 }}>
         <WalletPanel balancePence={balancePence} />
+        <LoyaltyBalance />
       </div>
 
       <footer>
@@ -298,5 +306,6 @@ export default async function Dashboard() {
         read.
       </footer>
     </main>
+    </>
   );
 }

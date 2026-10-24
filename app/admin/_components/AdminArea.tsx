@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-type Area = "files" | "wallet" | "transactions" | "orders" | "staff";
+type Area = "files" | "wallet" | "transactions" | "orders" | "staff" | "settings" | "dtc" | "loyalty";
 
 const links: { href: string; title: string; key: Area | "overview" | "orders" | "customers" }[] = [
   { href: "/admin", title: "Overview", key: "overview" },
@@ -13,6 +13,9 @@ const links: { href: string; title: string; key: Area | "overview" | "orders" | 
   { href: "/admin/files", title: "Tuning files", key: "files" },
   { href: "/admin/wallet", title: "Wallet & credits", key: "wallet" },
   { href: "/admin/transactions", title: "Transactions", key: "transactions" },
+  { href: "/admin/dtc", title: "DTC Lookup", key: "dtc" },
+  { href: "/admin/loyalty", title: "Loyalty Points", key: "loyalty" },
+  { href: "/admin/settings", title: "Settings", key: "settings" },
 ];
 
 export function AdminArea({

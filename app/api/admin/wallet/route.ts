@@ -21,7 +21,7 @@ export async function GET() {
   if ("response" in auth) return auth.response;
 
   const [profilesResult, walletsResult] = await Promise.all([
-    auth.admin.from("profiles").select("id,email,created_at").eq("role", "customer").order("created_at", { ascending: false }).limit(500),
+    auth.admin.from("profiles").select("id,email,created_at").order("created_at", { ascending: false }).limit(500),
     auth.admin.from("customer_wallets").select("user_id,balance_pence,updated_at"),
   ]);
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   if ("response" in auth) return auth.response;
 
   const parsed = schema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Enter a customer, a non-zero amount up to £10,000, and a reason." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Select an account, enter a non-zero amount up to £10,000, and provide a reason." }, { status: 400 });
 
   const { userId, amountPence, reason } = parsed.data;
   const { data, error } = await auth.admin.rpc("admin_adjust_wallet", {
@@ -66,4 +66,5 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ balancePence: data });
 }
+
 

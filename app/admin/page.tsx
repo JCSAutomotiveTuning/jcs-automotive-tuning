@@ -1,3 +1,5 @@
+import { PriceVisibilityToggle, MaskedAmount } from "@/components/PriceVisibility";
+import PriceVisibilityStyles from "@/components/PriceVisibilityStyles";
 
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -51,9 +53,21 @@ const navigation = [
     icon: "⚒",
   },
   {
+    label: "DTC Lookup",
+    description: "Bosch/VAG fault-code reference",
+    href: "/admin/dtc",
+    icon: "DTC",
+  },
+  {
+    label: "Loyalty Points",
+    description: "Customer reward balances",
+    href: "/admin/loyalty",
+    icon: "★",
+  },
+  {
     label: "Settings",
     description: "Administrator settings",
-    href: null,
+    href: "/admin/settings",
     icon: "⚙",
   },
 ];
@@ -147,6 +161,8 @@ export default async function AdminDashboard() {
   ];
 
   return (
+    <>
+    <PriceVisibilityStyles />
     <main className="jcs-admin-dashboard min-h-screen bg-[#090d14] text-slate-100">
       <div className="min-h-screen md:flex">
 
@@ -272,7 +288,7 @@ export default async function AdminDashboard() {
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
+              <div className="flex shrink-0 items-center gap-3"><PriceVisibilityToggle />
                 <div className="hidden text-right sm:block">
                   <p className="text-xs font-semibold text-white">Administrator</p>
                   <p className="mt-1 text-[10px] text-slate-500">Admin workspace</p>
@@ -363,7 +379,7 @@ export default async function AdminDashboard() {
                       </span>
                     </div>
                     <p className="mt-6 break-words text-3xl font-black tracking-tight text-white sm:text-4xl">
-                      {card.value}
+                      {card.label === "Wallet credits" ? <MaskedAmount>{card.value}</MaskedAmount> : card.value}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-slate-500">
                       {card.detail}
@@ -497,7 +513,7 @@ export default async function AdminDashboard() {
                         <span className="text-sm text-slate-400">Wallet balance</span>
                       </div>
                       <span className="text-sm font-bold tabular-nums text-white">
-                        {money(totalCredits)}
+                        <MaskedAmount>{money(totalCredits)}</MaskedAmount>
                       </span>
                     </div>
                   </div>
@@ -528,8 +544,7 @@ export default async function AdminDashboard() {
         </section>
       </div>
     </main>
-
-
+    </>
   );
 }
 

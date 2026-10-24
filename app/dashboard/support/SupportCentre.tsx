@@ -75,7 +75,6 @@ export default function SupportCentre({ orders }: Props) {
   const [success, setSuccess] = useState("");
 
   const loadTickets = useCallback(async () => {
-    setLoading(true);
 
     try {
       const response = await fetch("/api/support/tickets", {
@@ -102,7 +101,9 @@ export default function SupportCentre({ orders }: Props) {
   }, []);
 
   useEffect(() => {
-    void loadTickets();
+    const timer = Promise.resolve().then(() => loadTickets());
+
+    void timer;
   }, [loadTickets]);
 
   async function handleSubmit(

@@ -1,6 +1,9 @@
-/** @type {import('next').NextConfig} */
+﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
-  experimental: { serverComponentsExternalPackages: [] }
+  turbopack: {
+    root: process.cwd()
+  }
 };
+
 export default nextConfig;
