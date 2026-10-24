@@ -29,6 +29,35 @@ export default function Home() {
         .jcs-home .shell { max-width:1180px; margin:0 auto; }
         .jcs-home a { text-decoration:none; }
         .jcs-home .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:24px 0; border-bottom:1px solid #263747; }
+                /* JCS responsive logo */
+        .jcs-home .identity .mark {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 80px;
+          height: 80px;
+          min-width: 80px;
+          padding: 0;
+          overflow: hidden;
+          border: 0;
+          border-radius: 14px;
+          background: transparent;
+          box-shadow: none;
+        }
+        .jcs-home .identity .mark img {
+          display: block;
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: contain !important;
+          border-radius: 12px;
+        }
+        @media (max-width: 580px) {
+          .jcs-home .identity .mark {
+            width: 60px;
+            height: 60px;
+            min-width: 60px;
+          }
+        }
         .jcs-home .identity { display:flex; align-items:center; gap:12px; min-width:0; }
         .jcs-home .mark { display:grid; place-items:center; width:44px; height:44px; flex-shrink:0; border-radius:12px; background:#142f40; color:#8ed9ff; font-size:18px; font-weight:900; letter-spacing:-1px; }
         .jcs-home .brand-name { font-weight:850; font-size:18px; line-height:1.1; letter-spacing:-.5px; }
