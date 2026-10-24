@@ -1,8 +1,8 @@
-
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isServiceCode, SERVICES } from "@/lib/pricing";
+import { ADDON_LABELS } from "@/lib/tuning-addons";
 
 const schema = z.object({
   serviceCode: z.string(),
@@ -10,83 +10,64 @@ const schema = z.object({
   vehicleModel: z.string().trim().min(1).max(80),
   engineCode: z.string().trim().max(80).optional().default(""),
   softwareId: z.string().trim().max(120).optional().default(""),
-  notes: z.string().trim().max(3000).optional().default(""),
+  notes: z.string().trim().max(2500).optional().default(""),
+  fuelType: z.enum(["petrol","diesel"]).nullable().optional(),
+  addons: z.array(z.string()).max(24).optional().default([]),
 });
 
 export async function POST(req: Request) {
   const supabase = await createClient();
+  const {data:{user}} = await supabase.auth.getUser();
+  if(!user) return NextResponse.json({error:"Please sign in first."},{status:401});
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const parsed=schema.safeParse(await req.json().catch(()=>null));
+  if(!parsed.success) return NextResponse.json({error:"Please check the submitted fields."},{status:400});
+  const v=parsed.data;
+  if(!isServiceCode(v.serviceCode)) return NextResponse.json({error:"Unsupported service."},{status:400});
 
-  if (!user) {
-    return NextResponse.json(
-      { error: "Please sign in first." },
-      { status: 401 }
-    );
+  const tcuOnly = v.serviceCode==="dsg_tcu" || v.serviceCode==="custom_tcu";
+  const reviewOnly = v.serviceCode==="log_review" || v.serviceCode==="emissions_diagnostics";
+  const ecuAllowed = !tcuOnly && !reviewOnly;
+  const tcuAllowed = tcuOnly || v.serviceCode==="ecu_tcu_package";
+  const unique = [...new Set(v.addons)];
+  if(unique.some(key=>{
+    if(!(key in ADDON_LABELS)) return true;
+    const group=key.split(":")[0];
+    return group==="tcu" ? !tcuAllowed : !ecuAllowed || group!==v.fuelType;
+  })) return NextResponse.json({error:"Invalid or incompatible add-on selection."},{status:400});
+
+  const service=SERVICES[v.serviceCode];
+  const quoteRequired=unique.length>0 || ["custom_ecu","custom_tcu","ecu_tcu_package"].includes(v.serviceCode);
+  const addonsText=unique.length
+    ? "\n\nRequested add-ons (pending compatibility and quotation):\n" +
+      unique.map(key=>`- ${ADDON_LABELS[key]} [${key}]`).join("\n")
+    : "";
+  const fuelText=ecuAllowed && v.fuelType ? `\nFuel type: ${v.fuelType}` : "";
+  const customerNotes=`${v.notes}${fuelText}${addonsText}`.trim();
+  if(customerNotes.length>3000) return NextResponse.json({error:"Please shorten notes or reduce add-on selections."},{status:400});
+
+  const {data:order,error}=await supabase.from("orders").insert({
+    user_id:user.id,
+    service_code:v.serviceCode,
+    service_name:service.name,
+    amount_pence:service.pricePence,
+    currency:"GBP",
+    status:"awaiting_review",
+    payment_status:"unpaid",
+    vehicle_make:v.vehicleMake,
+    vehicle_model:v.vehicleModel,
+    engine_code:v.engineCode||null,
+    software_id:v.softwareId||null,
+    customer_notes:customerNotes||null,
+  }).select("id,service_code,status,payment_status,amount_pence").single();
+  if(error) {
+    console.error("Order creation failed:",error);
+    return NextResponse.json({error:"Could not create order. Check database setup."},{status:500});
   }
-
-  const parsed = schema.safeParse(
-    await req.json().catch(() => null)
-  );
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Please check the submitted fields." },
-      { status: 400 }
-    );
-  }
-
-  const v = parsed.data;
-
-  if (!isServiceCode(v.serviceCode)) {
-    return NextResponse.json(
-      { error: "Unsupported service." },
-      { status: 400 }
-    );
-  }
-
-  const quoteRequired = v.serviceCode === "ecu_tcu_package";
-  const service = SERVICES[v.serviceCode];
-
-  const { data: order, error } = await supabase
-    .from("orders")
-    .insert({
-      user_id: user.id,
-      service_code: v.serviceCode,
-      service_name: service.name,
-      amount_pence: service.pricePence,
-      currency: "GBP",
-      // Keep the existing database-compatible review status.
-      // Quote requests are distinguished by quoteRequired and service_code.
-      status: "awaiting_review",
-      payment_status: "unpaid",
-      vehicle_make: v.vehicleMake,
-      vehicle_model: v.vehicleModel,
-      engine_code: v.engineCode || null,
-      software_id: v.softwareId || null,
-      customer_notes: v.notes || null,
-    })
-    .select(
-      "id,service_code,status,payment_status,amount_pence"
-    )
-    .single();
-
-  if (error) {
-    console.error("Order creation failed:", error);
-
-    return NextResponse.json(
-      { error: "Could not create order. Check database setup." },
-      { status: 500 }
-    );
-  }
-
   return NextResponse.json({
-    order,
-    quoteRequired,
-    message: quoteRequired
-      ? "Quote requested. JCS Automotive Tuning must confirm the price before work proceeds."
-      : "Order submitted for review. Confirm the agreed price before custom tuning begins.",
+    order,quoteRequired,
+    message:quoteRequired
+      ? "Request submitted. JCS must review add-ons and confirm a quote before work proceeds."
+      : "Order submitted for review.",
   });
 }
