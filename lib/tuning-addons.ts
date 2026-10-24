@@ -43,6 +43,8 @@ export const ADDON_LABELS: Record<string,string> = Object.fromEntries(
 
 // Prices in pence. null means a custom quote is required.
 export const ADDON_PRICES: Record<string, number | null> = {
+  "petrol:sensor_scaling": 3000,
+  "diesel:sensor_scaling": 3000,
   "petrol:pops_bangs": 3500,
   "petrol:launch_control": 3500,
   "petrol:cold_start": 2000,
