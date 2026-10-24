@@ -71,7 +71,15 @@ export default function Home() {
       <div className="shell">
         <header className="topbar">
           <div className="identity">
-            <div className="mark" aria-hidden="true">JCS</div>
+            <Link href="/" className="mark" aria-label="JCS Automotive Tuning homepage">
+  <img
+    src="/jcs-automotive-logo.webp"
+    alt="JCS Automotive Tuning logo"
+    width={76}
+    height={76}
+    style={{ width: "76px", height: "76px", objectFit: "contain", borderRadius: "10px" }}
+  />
+</Link>
             <div>
               <div className="brand-name">JCS <span>AUTOMOTIVE TUNING</span></div>
               <div className="brand-sub">ECU · TCU · FILE SERVICES</div>
