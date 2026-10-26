@@ -137,7 +137,7 @@ export default function FilesManager() {
         </div>
         {error && <Feedback message={error} error />}
         {notice && <Feedback message={notice} />}
-        {loading ? <p className="py-10 text-center text-slate-400" role="status">Loading filesÃ¢â‚¬Â¦</p> : (
+        {loading ? <p className="py-10 text-center text-slate-400" role="status">Loading files…</p> : (
           <>
             <p className="mb-3 text-xs text-slate-400">Showing {filtered.length} of {files.length} files</p>
             <div className="overflow-x-auto">
@@ -145,9 +145,9 @@ export default function FilesManager() {
                 <thead className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-500"><tr><th className="py-3 pr-4">File</th><th className="py-3 pr-4">Customer</th><th className="py-3 pr-4">Vehicle / service</th><th className="py-3 pr-4">Type</th><th className="py-3 pr-4">Size</th><th className="py-3 pr-4">Scan</th><th className="py-3 pr-4">Approval</th><th className="py-3">Uploaded</th></tr></thead>
                 <tbody className="divide-y divide-white/[0.06]">
                   {filtered.map((file) => <tr key={file.id} className="align-top text-slate-300">
-                    <td className="py-4 pr-4"><span className="block max-w-[250px] break-all font-semibold text-white">{file.original_filename}</span><Link href="/admin/orders" className="mt-1 inline-block text-xs text-sky-300 hover:underline">View orders Ã¢â€ â€™</Link></td>
+                    <td className="py-4 pr-4"><span className="block max-w-[250px] break-all font-semibold text-white">{file.original_filename}</span><Link href="/admin/orders" className="mt-1 inline-block text-xs text-sky-300 hover:underline">View orders →</Link></td>
                     <td className="py-4 pr-4 break-all">{file.customer_email}</td>
-                    <td className="py-4 pr-4">{file.order ? `${file.order.vehicle_make} ${file.order.vehicle_model} Ã‚Â· ${file.order.service_name}` : "Order unavailable"}</td>
+                    <td className="py-4 pr-4">{file.order ? `${file.order.vehicle_make} ${file.order.vehicle_model} · ${file.order.service_name}` : "Order unavailable"}</td>
                     <td className="py-4 pr-4">{file.kind ?? "Ã¢â‚¬â€"}</td><td className="py-4 pr-4">{bytes(file.size_bytes)}</td><td className="py-4 pr-4">{file.scan_status ?? "Ã¢â‚¬â€"}</td><td className="py-4 pr-4">
   {file.kind === "completed_output" ? (
     <div className="flex min-w-[180px] flex-col gap-2">

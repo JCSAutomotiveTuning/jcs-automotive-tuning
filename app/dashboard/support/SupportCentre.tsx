@@ -177,7 +177,7 @@ export default function SupportCentre({ orders }: Props) {
               onChange={(event) => setSubject(event.target.value)}
               minLength={5}
               maxLength={200}
-              placeholder="e.g. DSG 1â€“2 shift issue"
+              placeholder="e.g. DSG 1–2 shift issue"
               required
             />
           </label>
@@ -221,7 +221,7 @@ export default function SupportCentre({ orders }: Props) {
               <option value="">Not related to an order</option>
               {orders.map((order) => (
                 <option key={order.id} value={order.id}>
-                  {order.service_name} â€” {order.vehicle_make}{" "}
+                  {order.service_name} — {order.vehicle_make}{" "}
                   {order.vehicle_model} ({order.id.slice(0, 8)})
                 </option>
               ))}
@@ -294,7 +294,7 @@ export default function SupportCentre({ orders }: Props) {
                 )}
 
                 <small>
-                  Ticket {ticket.id.slice(0, 8)} Â· Created{" "}
+                  Ticket {ticket.id.slice(0, 8)} · Created{" "}
                   {dateLabel(ticket.created_at)}
                 </small>
               </article>

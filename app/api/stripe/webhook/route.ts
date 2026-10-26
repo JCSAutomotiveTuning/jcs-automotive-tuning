@@ -1,4 +1,4 @@
-﻿
+
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -180,7 +180,7 @@ const handledCheckoutEvents = new Set<string>([
     console.error("Order payment requires reconciliation:", orderId, session.id, result);
     return NextResponse.json({ error: "Order payment requires reconciliation." }, { status: 409 });
   }
-  // Existing ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£20 wallet top-up flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â preserved.
+  // Existing GBP 20 wallet top-up flow preserved.
   if (
     session.amount_total !== 2000 ||
     session.currency !== "gbp" ||
