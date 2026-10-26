@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id,status")
+    .select("id,status,amount_pence,payment_status")
     .eq("id", v.orderId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -94,11 +94,32 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!previousCharge && (!wallet || wallet.balance_pence < 2000)) {
-    return NextResponse.json(
-      { error: "You need at least £20 in wallet credit to submit this file. Please top up first." },
-      { status: 402 }
-    );
+  if (!previousCharge) {
+    if (order.payment_status !== "unpaid") {
+      return NextResponse.json(
+        { error: "This order is already paid or has a payment in progress." },
+        { status: 409 }
+      );
+    }
+
+    if (!Number.isSafeInteger(order.amount_pence) || order.amount_pence <= 0) {
+      return NextResponse.json(
+        { error: "This order requires price confirmation before upload." },
+        { status: 409 }
+      );
+    }
+
+    if (!wallet || wallet.balance_pence < order.amount_pence) {
+      const required = (order.amount_pence / 100).toFixed(2);
+      const available = ((wallet?.balance_pence ?? 0) / 100).toFixed(2);
+
+      return NextResponse.json(
+        {
+          error: `Insufficient wallet credit. Order: GBP ${required}; available: GBP ${available}. Please top up first.`
+        },
+        { status: 402 }
+      );
+    }
   }
 
   const path = `${user.id}/${v.orderId}/${crypto.randomUUID()}-${v.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;

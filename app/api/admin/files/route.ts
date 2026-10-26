@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -21,7 +21,7 @@ export async function GET() {
 
   const { data: files, error } = await auth.admin
     .from("order_files")
-    .select("id,order_id,user_id,storage_path,original_filename,size_bytes,kind,scan_status,sha256,created_at")
+    .select("id,order_id,user_id,storage_path,original_filename,size_bytes,kind,scan_status,delivery_status,delivery_approved_at,delivery_approved_by,sha256,created_at")
     .order("created_at", { ascending: false })
     .limit(300);
 

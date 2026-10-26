@@ -51,3 +51,6 @@ rustdesk-*.exe
 
 # Additional local backup files
 *.logo-replace-backup
+.env.*
+
+/supabase/.temp/

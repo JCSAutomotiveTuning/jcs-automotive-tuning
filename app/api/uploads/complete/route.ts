@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Your wallet needs at least GBP 20 to submit this file. Please top up first.",
+            "Insufficient wallet balance for this order. Please top up your wallet to cover the order price.",
         },
         { status: 402 }
       );

@@ -85,6 +85,26 @@ export async function POST(req: Request) {
         attempt.session_id
       );
 
+      const matches =
+        existing.id === attempt.session_id &&
+        existing.mode === "payment" &&
+        existing.client_reference_id === user.id &&
+        existing.metadata?.type === "technical_request" &&
+        existing.metadata?.request_id === request.id &&
+        existing.metadata?.user_id === user.id &&
+        existing.metadata?.checkout_attempt_id === attempt.attempt_id &&
+        existing.currency === "gbp" &&
+        existing.amount_total === 1500;
+
+      if (!matches) {
+        console.error("Technical checkout session mismatch:", request.id);
+
+        return NextResponse.json(
+          { error: "Checkout session requires reconciliation." },
+          { status: 409 }
+        );
+      }
+
       if (
         existing.status === "open" &&
         existing.payment_status === "unpaid" &&
@@ -98,7 +118,7 @@ export async function POST(req: Request) {
         existing.payment_status === "unpaid"
       ) {
         const { data: reset, error: resetError } = await admin.rpc(
-          "reset_expired_technical_checkout",
+          "reset_verified_expired_technical_checkout",
           {
             p_request_id: request.id,
             p_user_id: user.id,
@@ -109,7 +129,7 @@ export async function POST(req: Request) {
 
         if (resetError || reset !== true) {
           return NextResponse.json(
-            { error: "Unable to reset expired Checkout session" },
+            { error: "Unable to reset expired Checkout session." },
             { status: 409 }
           );
         }
@@ -124,20 +144,16 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json(
-        {
-          error:
-            "The previous Checkout session needs reconciliation before another payment attempt.",
-        },
+        { error: "Checkout session requires reconciliation." },
         { status: 409 }
       );
     } catch {
       return NextResponse.json(
-        { error: "Unable to verify existing Checkout session" },
+        { error: "Unable to verify existing Checkout session." },
         { status: 503 }
       );
     }
   }
-
   const base =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
     new URL(req.url).origin;
@@ -203,10 +219,24 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ url: session.url });
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Stripe.errors.StripeError &&
+      (error.statusCode === 409 ||
+        error.code === "idempotency_key_in_use")
+    ) {
+      return NextResponse.json(
+        {
+          error: "Checkout is already being created. Please retry shortly.",
+          retry: true,
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: "Unable to create Checkout session" },
       { status: 503 }
     );
   }
 }
+

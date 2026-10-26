@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { MaskedAmount } from "@/components/PriceVisibility";
 import { useState } from "react";
@@ -6,6 +6,12 @@ import { useState } from "react";
 type WalletPanelProps = {
   balancePence: number;
 };
+
+const formatGBP = (pence: number) =>
+  new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  }).format(pence / 100);
 
 export default function WalletPanel({ balancePence }: WalletPanelProps) {
   const [loading, setLoading] = useState(false);
@@ -39,21 +45,30 @@ export default function WalletPanel({ balancePence }: WalletPanelProps) {
   return (
     <section className="card">
       <h2>Your wallet</h2>
+
       <p>
         Available credit:{" "}
-        <strong><MaskedAmount>Â£{(balancePence / 100).toFixed(2)}</MaskedAmount></strong>
+        <strong>
+          <MaskedAmount>{formatGBP(balancePence)}</MaskedAmount>
+        </strong>
       </p>
+
       <p>
-        Add Â£20 securely through Stripe. Each new file submission costs Â£20.
+        Add {formatGBP(2000)} securely through Stripe.
+        File submissions are charged at the price shown on each order.
       </p>
+
       <button
         className="btn blue"
         type="button"
         onClick={topUp}
         disabled={loading}
       >
-        {loading ? "Connecting to Stripe..." : "Top up Â£20"}
+        {loading
+          ? "Connecting to Stripe..."
+          : `Top up ${formatGBP(2000)}`}
       </button>
+
       {error && <p role="alert">{error}</p>}
     </section>
   );

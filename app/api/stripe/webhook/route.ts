@@ -1,4 +1,4 @@
-
+﻿
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -138,156 +138,53 @@ const handledCheckoutEvents = new Set<string>([
       { status: 409 }
     );
   }
-  // Customer order payments
+  // Customer order payments: legacy and reserved attempts are confirmed atomically.
   if (session.metadata?.type === "order_payment") {
     const orderId = session.metadata.order_id;
     const userId = session.metadata.user_id;
-
-    if (
-      !orderId ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        orderId
-      ) ||
-      !userId ||
-      session.client_reference_id !== userId
-    ) {
-      console.error("Stripe order payment has invalid references.");
-
-      return NextResponse.json(
-        { error: "Invalid order payment reference." },
-        { status: 400 }
-      );
+    const attemptId = session.metadata.checkout_attempt_id;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!orderId || !uuid.test(orderId) || !userId || !uuid.test(userId) ||
+        session.client_reference_id !== userId || session.currency !== "gbp" ||
+        !Number.isSafeInteger(session.amount_total) || (session.amount_total ?? 0) <= 0 ||
+        (attemptId !== undefined && !uuid.test(attemptId))) {
+      return NextResponse.json({ error: "Invalid order payment reference." }, { status: 400 });
     }
 
-    if (
-      session.currency !== "gbp" ||
-      !Number.isSafeInteger(session.amount_total) ||
-      (session.amount_total ?? 0) <= 0
-    ) {
-      console.error("Stripe order payment has an invalid amount or currency.");
-
-      return NextResponse.json(
-        { error: "Invalid order payment amount or currency." },
-        { status: 400 }
-      );
+    // Never let an old-format webhook bypass a newly reserved checkout attempt.
+    if (!attemptId) {
+      const { data: legacyOrder, error: lookupError } = await admin.from("orders")
+        .select("checkout_attempt_id").eq("id", orderId).eq("user_id", userId).maybeSingle();
+      if (lookupError || !legacyOrder || legacyOrder.checkout_attempt_id) {
+        console.error("Legacy order payment needs reconciliation:", orderId);
+        return NextResponse.json({ error: "Order payment needs reconciliation." }, { status: 409 });
+      }
     }
 
-    const { data: order, error: lookupError } = await admin
-      .from("orders")
-      .select(
-        "id,user_id,amount_pence,currency,status,payment_status"
-      )
-      .eq("id", orderId)
-      .maybeSingle();
-
-    if (lookupError) {
-      console.error("Order payment lookup failed:", lookupError.message);
-
-      return NextResponse.json(
-        { error: "Could not verify the order." },
-        { status: 500 }
-      );
+    const { data: result, error } = attemptId
+      ? await admin.rpc("confirm_reserved_order_payment", {
+          p_order_id: orderId, p_user_id: userId, p_attempt_id: attemptId,
+          p_session_id: session.id, p_amount_pence: session.amount_total,
+        })
+      : await admin.rpc("confirm_order_payment", {
+          p_order_id: orderId, p_user_id: userId,
+          p_session_id: session.id, p_amount_pence: session.amount_total,
+        });
+    if (error) {
+      console.error("Order payment confirmation failed:", error.message);
+      return NextResponse.json({ error: "Order payment confirmation failed." }, { status: 500 });
     }
-
-    if (!order || order.user_id !== userId) {
-      console.error("Stripe order payment does not match an order/customer.");
-
-      return NextResponse.json(
-        { error: "Order or customer does not match." },
-        { status: 400 }
-      );
-    }
-
-    if (
-      order.currency !== "GBP" ||
-      order.amount_pence !== session.amount_total
-    ) {
-      console.error("Stripe payment amount does not match the order:", orderId);
-
-      return NextResponse.json(
-        { error: "Payment amount does not match the order." },
-        { status: 409 }
-      );
-    }
-
-    // Stripe can deliver the same event more than once.
-    if (order.payment_status === "paid") {
+    if (result === "confirmed" || result === "already_confirmed") {
       return NextResponse.json({ received: true });
     }
-
-    if (
-      order.status !== "awaiting_payment" ||
-      order.payment_status !== "unpaid"
-    ) {
-      console.error(
-        "Order is not payable but Stripe reports a completed payment:",
-        orderId
-      );
-
-      return NextResponse.json(
-        { error: "Order state needs payment reconciliation." },
-        { status: 409 }
-      );
-    }
-
-    const { data: updatedOrder, error: updateError } = await admin
-      .from("orders")
-      .update({
-        status: "paid",
-        payment_status: "paid",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", orderId)
-      .eq("user_id", userId)
-      .eq("amount_pence", session.amount_total)
-      .eq("currency", "GBP")
-      .eq("status", "awaiting_payment")
-      .eq("payment_status", "unpaid")
-      .select("id")
-      .maybeSingle();
-
-    if (updateError) {
-      console.error("Could not mark order as paid:", updateError.message);
-
-      return NextResponse.json(
-        { error: "Could not update the order payment." },
-        { status: 500 }
-      );
-    }
-
-    if (!updatedOrder) {
-      // Another delivery may have completed the update concurrently.
-      const { data: latestOrder, error: latestError } = await admin
-        .from("orders")
-        .select("payment_status,amount_pence,currency,user_id")
-        .eq("id", orderId)
-        .maybeSingle();
-
-      if (
-        !latestError &&
-        latestOrder?.user_id === userId &&
-        latestOrder.payment_status === "paid" &&
-        latestOrder.amount_pence === session.amount_total &&
-        latestOrder.currency === "GBP"
-      ) {
-        return NextResponse.json({ received: true });
-      }
-
-      console.error("Order payment update needs reconciliation:", orderId);
-
-      return NextResponse.json(
-        { error: "Could not safely confirm the order payment." },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ received: true });
+    console.error("Order payment requires reconciliation:", orderId, session.id, result);
+    return NextResponse.json({ error: "Order payment requires reconciliation." }, { status: 409 });
   }
-
-  // Existing Ãƒâ€šÃ‚Â£20 wallet top-up flow ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â preserved.
+  // Existing ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£20 wallet top-up flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â preserved.
   if (
     session.amount_total !== 2000 ||
     session.currency !== "gbp" ||
+    session.metadata?.type !== "wallet_topup" ||
     session.metadata?.top_up_pence !== "2000"
   ) {
     return NextResponse.json({ received: true });
@@ -319,3 +216,5 @@ const handledCheckoutEvents = new Set<string>([
 
   return NextResponse.json({ received: true });
 }
+
+

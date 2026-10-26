@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isServiceCode, SERVICES } from "@/lib/pricing";
 import { ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE } from "@/lib/tuning-addons";
 
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
   const customerNotes=`${v.notes}${fuelText}${addonsText}${dtcText}${pricingText}`.trim();
   if(customerNotes.length>3000) return NextResponse.json({error:"Please shorten notes or reduce add-on selections."},{status:400});
 
-  const {data:order,error}=await supabase.from("orders").insert({
+  const {data:order,error}=await createAdminClient().from("orders").insert({
     user_id:user.id,
     service_code:v.serviceCode,
     service_name:service.name,

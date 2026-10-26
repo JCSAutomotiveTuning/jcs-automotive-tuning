@@ -69,7 +69,7 @@ function Field({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">{title}</dt>
-      <dd className="break-words text-sm font-medium text-slate-200">{children || "—"}</dd>
+      <dd className="break-words text-sm font-medium text-slate-200">{children || "Ã¢â‚¬â€"}</dd>
     </div>
   );
 }
@@ -92,6 +92,9 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [finishedFile, setFinishedFile] = useState<File | null>(null);
+  const [uploadingFinished, setUploadingFinished] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
 
   const selected = orders.find((order) => order.id === selectedId) ?? null;
   const stats = useMemo(() => ({
@@ -118,6 +121,8 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
 
   function choose(order: Order) {
     setSelectedId(order.id);
+    setFinishedFile(null);
+    setUploadMessage("");
     setDraftStatus(order.status);
     setDraftNotes(order.admin_notes ?? "");
     setQuotePounds(order.amount_pence > 0 ? (order.amount_pence / 100).toFixed(2) : "");
@@ -160,6 +165,49 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
     }
   }
 
+  async function uploadCompletedFile() {
+    if (!selected || !finishedFile || uploadingFinished) return;
+
+    const orderId = selected.id;
+
+    setUploadingFinished(true);
+    setUploadMessage("");
+    setError("");
+    setSuccess("");
+
+    try {
+      const form = new FormData();
+      form.append("orderId", orderId);
+      form.append("file", finishedFile);
+
+      const response = await fetch("/api/admin/completed-files", {
+        method: "POST",
+        credentials: "same-origin",
+        body: form,
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ?? `Upload failed (HTTP ${response.status}).`
+        );
+      }
+
+      setFinishedFile(null);
+      setUploadMessage(
+        "Finished file uploaded successfully. Status: pending review."
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not upload the finished file."
+      );
+    } finally {
+      setUploadingFinished(false);
+    }
+  }
   const allowQuote = selected !== null && quoteServices.has(selected.service_code ?? "")
     && selected.status === "awaiting_review" && selected.payment_status === "unpaid";
   const allowRequestPayment = selected !== null && selected.status === "awaiting_review"
@@ -179,7 +227,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
             <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Tuning job control centre<span className="text-sky-400">.</span></h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">Manage customer requests from review and quotation through payment, calibration and delivery.</p>
           </div>
-          <button type="button" onClick={() => window.location.reload()} className={secondaryButton}>↻ <span>Reload orders</span></button>
+          <button type="button" onClick={() => window.location.reload()} className={secondaryButton}>Ã¢â€ Â» <span>Reload orders</span></button>
         </div>
       </section>
 
@@ -209,11 +257,11 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                 <p className="mt-1 text-xs text-slate-500">Showing {filtered.length} of {orders.length} loaded orders</p>
               </div>
               <button type="button" className={secondaryButton} onClick={() => setShowFilters((value) => !value)} aria-expanded={showFilters}>
-                ⚑ Filters {showFilters ? "−" : "+"}
+                Ã¢Å¡â€˜ Filters {showFilters ? "Ã¢Ë†â€™" : "+"}
               </button>
             </div>
             <div className="relative mt-5">
-              <span aria-hidden="true" className="pointer-events-none absolute left-4 top-3 text-slate-500">⌕</span>
+              <span aria-hidden="true" className="pointer-events-none absolute left-4 top-3 text-slate-500">Ã¢Å’â€¢</span>
               <input aria-label="Search orders" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search customer, vehicle, service, order ID..." className={`${inputStyle} pl-10`} />
             </div>
             {showFilters && (
@@ -241,7 +289,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
 
           <div className="max-h-[900px] space-y-2 overflow-y-auto p-3 sm:p-4">
             {filtered.length === 0 ? (
-              <div className="px-5 py-16 text-center"><div className="mb-3 text-4xl text-slate-600">▤</div><h3 className="text-base font-bold text-slate-200">No matching orders</h3><p className="mt-2 text-sm text-slate-500">Try a different search or clear the filters.</p>
+              <div className="px-5 py-16 text-center"><div className="mb-3 text-4xl text-slate-600">Ã¢â€“Â¤</div><h3 className="text-base font-bold text-slate-200">No matching orders</h3><p className="mt-2 text-sm text-slate-500">Try a different search or clear the filters.</p>
                 <button type="button" className={`${secondaryButton} mt-5`} onClick={() => { setSearch(""); setFilter("all"); setPaymentFilter("all"); }}>Clear filters</button>
               </div>
             ) : filtered.map((order) => (
@@ -256,7 +304,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                 <div className="mt-3 flex flex-wrap items-center gap-2"><StatusPill value={order.status} /><StatusPill value={order.payment_status} dot={false} /></div>
                 <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/[0.07] pt-3">
                   <span className="min-w-0 truncate text-xs text-slate-400">{order.customer_email || "Unknown customer"}</span>
-                  <span className="shrink-0 text-xs font-bold text-sky-300">View job →</span>
+                  <span className="shrink-0 text-xs font-bold text-sky-300">View job Ã¢â€ â€™</span>
                 </div>
               </button>
             ))}
@@ -265,7 +313,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
 
         <section className="min-w-0 self-start overflow-hidden rounded-2xl border border-white/10 bg-[#101620] 2xl:sticky 2xl:top-5">
           {!selected ? (
-            <div className="px-6 py-20 text-center"><p className="text-4xl text-slate-600">▤</p><p className="mt-3 text-sm font-bold text-white">Select an order</p><p className="mt-2 text-xs text-slate-400">Choose a tuning job to review the details and manage progress.</p></div>
+            <div className="px-6 py-20 text-center"><p className="text-4xl text-slate-600">Ã¢â€“Â¤</p><p className="mt-3 text-sm font-bold text-white">Select an order</p><p className="mt-2 text-xs text-slate-400">Choose a tuning job to review the details and manage progress.</p></div>
           ) : (
             <>
               <div className="relative overflow-hidden border-b border-white/[0.07] bg-gradient-to-br from-[#18263a] to-[#101620] p-5 sm:p-6">
@@ -280,12 +328,12 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
                   <Field title="Customer">{selected.customer_email}</Field>
                   <Field title="Order value">{money(selected.amount_pence)}</Field>
-                  <Field title="Engine code">{selected.engine_code || "—"}</Field>
-                  <Field title="Software ID">{selected.software_id || "—"}</Field>
+                  <Field title="Engine code">{selected.engine_code || "Ã¢â‚¬â€"}</Field>
+                  <Field title="Software ID">{selected.software_id || "Ã¢â‚¬â€"}</Field>
                   <Field title="Created">{dateTime(selected.created_at)}</Field>
                   <Field title="Order reference">
-                    <div className="flex items-center gap-1"><span className="truncate font-mono text-xs" title={selected.id}>{selected.id.slice(0, 8)}…</span>
-                      <button type="button" aria-label="Copy order ID" title="Copy full order ID" className="rounded px-2 py-1 text-sky-300 hover:bg-sky-400/10" onClick={() => { void navigator.clipboard.writeText(selected.id).then(() => setSuccess("Order ID copied.")).catch(() => setError("Unable to copy the order ID.")); }}>⧉</button></div>
+                    <div className="flex items-center gap-1"><span className="truncate font-mono text-xs" title={selected.id}>{selected.id.slice(0, 8)}Ã¢â‚¬Â¦</span>
+                      <button type="button" aria-label="Copy order ID" title="Copy full order ID" className="rounded px-2 py-1 text-sky-300 hover:bg-sky-400/10" onClick={() => { void navigator.clipboard.writeText(selected.id).then(() => setSuccess("Order ID copied.")).catch(() => setError("Unable to copy the order ID.")); }}>Ã¢Â§â€°</button></div>
                   </Field>
                 </div>
 
@@ -308,17 +356,59 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                       <textarea id="jcs-order-notes" value={draftNotes} onChange={(event) => setDraftNotes(event.target.value)} disabled={busy !== null} rows={4} maxLength={3000} placeholder="Calibration requirements, test results, file delivery notes..." className={`${inputStyle} resize-y`} />
                     </div>
                     <button type="button" disabled={saveDisabled} className={`${primaryButton} w-full`} onClick={() => void patch({ action: "update", ...(draftStatus !== selected.status ? { status: draftStatus } : {}), adminNotes: draftNotes }, "save")}>
-                      {busy === "save" ? "Saving order…" : "Save order changes →"}
+                      {busy === "save" ? "Saving orderÃ¢â‚¬Â¦" : "Save order changes Ã¢â€ â€™"}
                     </button>
                   </div>
                 </div>
 
+                {selected.payment_status === "paid" &&
+                  ["in_progress", "qa_review"].includes(selected.status) && (
+                  <div className="border-t border-white/[0.08] pt-5">
+                    <h3 className="text-base font-bold text-white">
+                      Finished tuning file
+                    </h3>
+
+                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                      Upload the completed ECU or TCU calibration for this
+                      customer. The file stays private and pending review.
+                    </p>
+
+                    <input
+                      key={selected.id}
+                      type="file"
+                      accept=".bin,.ori,.hex,.frf,.odx,.txt,.csv,.log,.zip"
+                      disabled={uploadingFinished}
+                      onChange={(event) => {
+                        setFinishedFile(event.target.files?.[0] ?? null);
+                        setUploadMessage("");
+                      }}
+                      className={`${inputStyle} mt-4`}
+                    />
+
+                    <button
+                      type="button"
+                      className={`${primaryButton} mt-3 w-full`}
+                      disabled={!finishedFile || uploadingFinished || busy !== null}
+                      onClick={() => void uploadCompletedFile()}
+                    >
+                      {uploadingFinished
+                        ? "Uploading finished file..."
+                        : "Upload finished file"}
+                    </button>
+
+                    {uploadMessage && (
+                      <p className="mt-3 text-xs text-emerald-300">
+                        {uploadMessage}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {allowQuote && <div className="border-t border-white/[0.08] pt-5">
                   <h3 className="text-base font-bold text-white">Custom tuning quotation</h3>
                   <p className="mt-1 text-xs leading-5 text-slate-400">Set the agreed price before requesting payment.</p>
-                  <div className="mt-3 flex gap-2"><div className="relative min-w-0 flex-1"><span className="absolute left-3 top-3 text-sm font-bold text-slate-400">£</span>
+                  <div className="mt-3 flex gap-2"><div className="relative min-w-0 flex-1"><span className="absolute left-3 top-3 text-sm font-bold text-slate-400">Ã‚Â£</span>
                     <input aria-label="Quoted amount in pounds" inputMode="decimal" className={`${inputStyle} pl-7`} value={quotePounds} onChange={(event) => setQuotePounds(event.target.value)} placeholder="150.00" disabled={busy !== null} /></div>
-                    <button type="button" className={secondaryButton} disabled={busy !== null || !validQuote} onClick={() => void patch({ action: "save_quote", quoteAmountPence: parsedQuote }, "quote")}>{busy === "quote" ? "Saving…" : "Save quote"}</button></div>
+                    <button type="button" className={secondaryButton} disabled={busy !== null || !validQuote} onClick={() => void patch({ action: "save_quote", quoteAmountPence: parsedQuote }, "quote")}>{busy === "quote" ? "SavingÃ¢â‚¬Â¦" : "Save quote"}</button></div>
                 </div>}
 
                 {allowRequestPayment && <div className="border-t border-white/[0.08] pt-5">
@@ -327,7 +417,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                     <p className="mt-1.5 text-xs leading-5 text-slate-400">The customer can pay {money(selected.amount_pence)} after the order is moved to awaiting payment.</p>
                     <button type="button" className={`${primaryButton} mt-4 w-full`} disabled={busy !== null} onClick={() => {
                       if (window.confirm(`Request payment of ${money(selected.amount_pence)} for ${selected.customer_email}?`)) void patch({ action: "request_payment" }, "payment");
-                    }}>{busy === "payment" ? "Requesting…" : "Request customer payment →"}</button>
+                    }}>{busy === "payment" ? "RequestingÃ¢â‚¬Â¦" : "Request customer payment Ã¢â€ â€™"}</button>
                   </div>
                 </div>}
 

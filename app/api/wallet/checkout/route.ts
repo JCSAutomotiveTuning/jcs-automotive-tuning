@@ -55,6 +55,7 @@ export async function POST() {
       client_reference_id: user.id,
       metadata: {
         user_id: user.id,
+        type: "wallet_topup",
         top_up_pence: "2000",
       },
       success_url: `${siteUrl}/dashboard?topup=success`,
@@ -93,3 +94,4 @@ export async function POST() {
     );
   }
 }
+

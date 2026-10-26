@@ -6,6 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import NewOrder from "./new-order";
+import ResumeUpload from "./ResumeUpload";
 import WalletPanel from "./wallet-panel";
 import OrderPaymentButton from "./OrderPaymentButton";
 import LiveClock from "@/components/LiveClock";
@@ -100,7 +101,7 @@ export default async function Dashboard() {
     supabase
       .from("orders")
       .select(
-        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code"
+        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,order_files(id)"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -220,6 +221,17 @@ export default async function Dashboard() {
                   o.amount_pence > 0 &&
                   validCurrency;
 
+                const canResumeUpload =
+                  o.status === "awaiting_review" &&
+                  o.payment_status === "unpaid" &&
+                  o.currency === "GBP" &&
+                  Number.isSafeInteger(o.amount_pence) &&
+                  o.amount_pence > 0 &&
+                  (o.order_files?.length ?? 0) === 0 &&
+                  !["custom_ecu", "custom_tcu", "ecu_tcu_package"].includes(
+                    o.service_code
+                  );
+
                 return (
                   <article className="order-entry order-card" key={o.id}>
                     <div className="row" style={{ gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
@@ -282,6 +294,10 @@ export default async function Dashboard() {
                     )}
 
                     {canPay && <OrderPaymentButton orderId={o.id} />}
+
+                     {canResumeUpload && (
+                       <ResumeUpload orderId={o.id} />
+                     )}
 
                     {o.status === "awaiting_review" &&
                       o.payment_status === "unpaid" &&

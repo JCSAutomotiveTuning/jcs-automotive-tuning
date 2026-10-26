@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +47,49 @@ export async function GET(req:Request) {
     }
     subject="Your JCS tuning file is ready for payment";
     body=`Your tuning file is ready. Payment of ${gbp(order.amount_pence)} is required to unlock your file. Sign in and pay securely through your portal: ${safeUrl()}/dashboard. We never ask for card details by email or SMS.`;
-   } else throw new Error("Unknown event type");
+       } else if (
+     event.event_type === "order_cancelled" ||
+     event.event_type === "needs_customer_info"
+    ) {
+     const orderId = event.payload.order_id;
+     if (
+      typeof orderId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)
+     ) throw new Error("Invalid order notification payload");
+
+     const {data:order,error:orderError}=await db
+      .from("orders")
+      .select("id,user_id,status")
+      .eq("id",orderId)
+      .maybeSingle();
+
+     if(orderError)throw new Error("Order status lookup failed");
+
+     const expectedStatus=event.event_type==="order_cancelled"
+      ?"cancelled":"needs_customer_info";
+
+     if(!order||order.user_id!==event.user_id||order.status!==expectedStatus) {
+      const {error:skipError}=await db.from("notification_outbox")
+       .update({
+        status:"sent",
+        sent_at:new Date().toISOString(),
+        last_error:"Order notification outdated or recipient mismatch; skipped",
+        locked_at:null
+       })
+       .eq("id",event.id);
+
+      if(skipError)throw new Error("Failed to skip outdated order notification");
+      continue;
+     }
+
+     if(event.event_type==="order_cancelled") {
+      subject="Your JCS tuning order has been cancelled";
+      body=`Your JCS Automotive Tuning order has been cancelled. Sign in to review your order: ${safeUrl()}/dashboard`;
+     } else {
+      subject="More information needed for your JCS tuning order";
+      body=`We need additional information before continuing your JCS Automotive Tuning order. Please sign in to your portal to review your order and contact our team: ${safeUrl()}/dashboard`;
+     }
+    } else throw new Error("Unknown event type");
    const channels: Array<{name:"email"|"sms";enabled:boolean;destination:string|null}>= [
     {name:"email",enabled:pref?.email_enabled??true,destination:profile?.email??null},
     {name:"sms",enabled:Boolean(pref?.sms_enabled&&pref.phone_verified_at),destination:pref?.phone_e164??null},
@@ -58,23 +100,82 @@ export async function GET(req:Request) {
     const {data:prior,error:priorError}=await db.from("notification_deliveries").select("status").eq("outbox_id",event.id).eq("channel",ch.name).maybeSingle();
     if(priorError)throw new Error("Delivery lookup failed");
     if(prior?.status==="sent")continue;
-    try {
-     const providerId=ch.name==="email"?await email(ch.destination,subject,body,`jcs-${event.id}-email`):await sms(ch.destination,body);
-     const {error:writeError}=await db.from("notification_deliveries").upsert({outbox_id:event.id,channel:ch.name,status:"sent",provider_id:providerId,error:null},{onConflict:"outbox_id,channel"});
-     if(writeError)throw new Error("Delivery record failed");
-    } catch(e) {
-     hasFailure=true;console.error("Notification channel failed",event.id,ch.name,e instanceof Error?e.message:"unknown");
-     await db.from("notification_deliveries").upsert({outbox_id:event.id,channel:ch.name,status:"failed",error:e instanceof Error?e.message:"unknown"},{onConflict:"outbox_id,channel"});
+     if(ch.name==="sms") {
+      // A delivery row is a one-shot reservation; never automatically resend an SMS.
+      if(prior) {
+       hasFailure=true;
+       console.error("SMS requires manual reconciliation",event.id,prior.status);
+       continue;
+      }
+      // INSERT with the existing unique (outbox_id, channel) constraint is atomic.
+      // Do not upsert: an existing attempt must never be overwritten.
+      const {data:reserved,error:reserveError}=await db
+       .from("notification_deliveries")
+       .insert({outbox_id:event.id,channel:"sms",status:"sending",error:null})
+       .select("id")
+       .single();
+      if(reserveError||!reserved) {
+       hasFailure=true;
+       console.error("SMS reservation not acquired",event.id,reserveError?.code??"unknown");
+       continue;
+      }
+      try {
+       const providerId=await sms(ch.destination,body);
+       const {data:confirmed,error:writeError}=await db
+        .from("notification_deliveries")
+        .update({status:"sent",provider_id:providerId,error:null})
+        .eq("id",reserved.id)
+        .eq("status","sending")
+        .select("id");
+       if(writeError||!confirmed?.length)throw new Error("SMS delivery confirmation failed");
+      } catch(e) {
+       hasFailure=true;
+       console.error("SMS outcome requires reconciliation",event.id,e instanceof Error?e.message:"unknown");
+       const {error:markError}=await db.from("notification_deliveries")
+        .update({status:"unknown",error:"SMS outcome requires manual reconciliation"})
+        .eq("id",reserved.id)
+        .eq("status","sending");
+       if(markError)console.error("SMS unknown marker failed",event.id,markError.message);
+      }
+      continue;
+     }
+     // Email retains the original provider idempotency key and retry path.
+     try {
+      const providerId=await email(ch.destination,subject,body,`jcs-${event.id}-email`);
+      const {error:writeError}=await db.from("notification_deliveries").upsert({outbox_id:event.id,channel:ch.name,status:"sent",provider_id:providerId,error:null},{onConflict:"outbox_id,channel"});
+      if(writeError)throw new Error("Delivery record failed");
+     } catch(e) {
+      hasFailure=true;console.error("Notification channel failed",event.id,ch.name,e instanceof Error?e.message:"unknown");
+      await db.from("notification_deliveries").upsert({outbox_id:event.id,channel:ch.name,status:"failed",error:e instanceof Error?e.message:"unknown"},{onConflict:"outbox_id,channel"});
+     }
     }
-   }
-   if(hasFailure)throw new Error("One or more channels failed");
+    if(hasFailure)throw new Error("One or more channels failed");
    const {error:updateError}=await db.from("notification_outbox").update({status:"sent",sent_at:new Date().toISOString(),last_error:null,locked_at:null}).eq("id",event.id);
    if(updateError)throw new Error("Queue update failed");sent++;
   }catch(e){failed++;const message=e instanceof Error?e.message:"Unknown delivery failure";
    console.error("Notification processing failed",event.id,message);
+   const {data:smsAttempts,error:smsCheckError}=await db
+    .from("notification_deliveries")
+    .select("status")
+    .eq("outbox_id",event.id)
+    .eq("channel","sms");
+
+   const needsReconciliation=Boolean(smsCheckError)||
+    (smsAttempts??[]).some(d=>d.status!=="sent");
+
    const terminal=event.attempts>=5;
-   await db.from("notification_outbox").update({status:terminal?"failed":"pending",next_attempt_at:new Date(Date.now()+Math.min(60,2**event.attempts)*60000).toISOString(),last_error:message,locked_at:null}).eq("id",event.id);
+   const nextStatus=needsReconciliation?"needs_reconciliation":terminal?"failed":"pending";
+
+   const {error:queueError}=await db.from("notification_outbox").update({
+    status:nextStatus,
+    next_attempt_at:new Date(Date.now()+Math.min(60,2**event.attempts)*60000).toISOString(),
+    last_error:needsReconciliation?"SMS requires manual reconciliation: "+message:message,
+    locked_at:null
+   }).eq("id",event.id);
+
+   if(queueError)console.error("Notification queue update failed",event.id,queueError.message);
   }
  }
  return NextResponse.json({processed:(claimed??[]).length,sent,failed});
 }
+

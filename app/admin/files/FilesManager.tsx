@@ -12,13 +12,14 @@ type FileRow = {
   size_bytes: number | null;
   kind: string | null;
   scan_status: string | null;
+  delivery_status: string | null;
   created_at: string;
   customer_email: string;
   order: { id: string; service_name: string; vehicle_make: string; vehicle_model: string } | null;
 };
 
 function bytes(n: number | null): string {
-  if (n == null || !Number.isFinite(n)) return "—";
+  if (n == null || !Number.isFinite(n)) return "Ã¢â‚¬â€";
   if (n < 1024) return `${n} B`;
   if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / 1048576).toFixed(1)} MB`;
@@ -30,6 +31,8 @@ export default function FilesManager() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
+  const [busyFile, setBusyFile] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -70,6 +73,55 @@ export default function FilesManager() {
     );
   }, [files, kind, query]);
 
+  const changeApproval = async (
+    file: FileRow,
+    action: "approve" | "reject" | "reset"
+  ) => {
+    if (busyFile) return;
+
+    const confirmed = window.confirm(
+      `${action === "approve" ? "Approve" : action === "reject" ? "Reject" : "Reset to pending"} ${file.original_filename}?`
+    );
+
+    if (!confirmed) return;
+
+    setBusyFile(file.id);
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await fetch(
+        `/api/admin/files/${encodeURIComponent(file.id)}/approval`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          cache: "no-store",
+          body: JSON.stringify({ action }),
+        }
+      );
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error || `Approval request failed (${response.status}).`
+        );
+      }
+
+      await reload();
+
+      setNotice(
+        `${file.original_filename} ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "reset to pending"} successfully.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not update file approval."
+      );
+    } finally {
+      setBusyFile(null);
+    }
+  };
   return (
     <AdminArea active="files" title="Tuning files" description="Review uploaded and completed ECU/TCU files. File downloads are deliberately not enabled without verifying storage permissions.">
       <Panel>
@@ -84,18 +136,70 @@ export default function FilesManager() {
           </select>
         </div>
         {error && <Feedback message={error} error />}
-        {loading ? <p className="py-10 text-center text-slate-400" role="status">Loading files…</p> : (
+        {notice && <Feedback message={notice} />}
+        {loading ? <p className="py-10 text-center text-slate-400" role="status">Loading filesÃ¢â‚¬Â¦</p> : (
           <>
             <p className="mb-3 text-xs text-slate-400">Showing {filtered.length} of {files.length} files</p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[850px] text-left text-sm">
-                <thead className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-500"><tr><th className="py-3 pr-4">File</th><th className="py-3 pr-4">Customer</th><th className="py-3 pr-4">Vehicle / service</th><th className="py-3 pr-4">Type</th><th className="py-3 pr-4">Size</th><th className="py-3 pr-4">Scan</th><th className="py-3">Uploaded</th></tr></thead>
+                <thead className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-500"><tr><th className="py-3 pr-4">File</th><th className="py-3 pr-4">Customer</th><th className="py-3 pr-4">Vehicle / service</th><th className="py-3 pr-4">Type</th><th className="py-3 pr-4">Size</th><th className="py-3 pr-4">Scan</th><th className="py-3 pr-4">Approval</th><th className="py-3">Uploaded</th></tr></thead>
                 <tbody className="divide-y divide-white/[0.06]">
                   {filtered.map((file) => <tr key={file.id} className="align-top text-slate-300">
-                    <td className="py-4 pr-4"><span className="block max-w-[250px] break-all font-semibold text-white">{file.original_filename}</span><Link href="/admin/orders" className="mt-1 inline-block text-xs text-sky-300 hover:underline">View orders →</Link></td>
+                    <td className="py-4 pr-4"><span className="block max-w-[250px] break-all font-semibold text-white">{file.original_filename}</span><Link href="/admin/orders" className="mt-1 inline-block text-xs text-sky-300 hover:underline">View orders Ã¢â€ â€™</Link></td>
                     <td className="py-4 pr-4 break-all">{file.customer_email}</td>
-                    <td className="py-4 pr-4">{file.order ? `${file.order.vehicle_make} ${file.order.vehicle_model} · ${file.order.service_name}` : "Order unavailable"}</td>
-                    <td className="py-4 pr-4">{file.kind ?? "—"}</td><td className="py-4 pr-4">{bytes(file.size_bytes)}</td><td className="py-4 pr-4">{file.scan_status ?? "—"}</td><td className="py-4">{dateTime(file.created_at)}</td>
+                    <td className="py-4 pr-4">{file.order ? `${file.order.vehicle_make} ${file.order.vehicle_model} Ã‚Â· ${file.order.service_name}` : "Order unavailable"}</td>
+                    <td className="py-4 pr-4">{file.kind ?? "Ã¢â‚¬â€"}</td><td className="py-4 pr-4">{bytes(file.size_bytes)}</td><td className="py-4 pr-4">{file.scan_status ?? "Ã¢â‚¬â€"}</td><td className="py-4 pr-4">
+  {file.kind === "completed_output" ? (
+    <div className="flex min-w-[180px] flex-col gap-2">
+      <span className="text-xs font-semibold">
+        {file.delivery_status ?? "pending"}
+      </span>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={
+            busyFile !== null ||
+            file.scan_status !== "clean" ||
+            file.delivery_status === "approved"
+          }
+          title={
+            file.scan_status !== "clean"
+              ? "File has not passed safety validation."
+              : "Approve finished file"
+          }
+          onClick={() => void changeApproval(file, "approve")}
+          className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busyFile === file.id ? "Working..." : "Approve"}
+        </button>
+        <button
+          type="button"
+          disabled={
+            busyFile !== null ||
+            file.delivery_status === "rejected"
+          }
+          onClick={() => void changeApproval(file, "reject")}
+          className="rounded-lg border border-red-400/40 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Reject
+        </button>
+        {file.delivery_status === "rejected" && (
+          <button
+            type="button"
+            disabled={busyFile !== null}
+            title="Return rejected file to pending review"
+            onClick={() => void changeApproval(file, "reset")}
+            className="rounded-lg border border-sky-400/40 px-3 py-1.5 text-xs font-semibold text-sky-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Reset to pending
+          </button>
+        )}
+      </div>
+    </div>
+  ) : (
+    <span className="text-xs text-slate-500">Not applicable</span>
+  )}
+</td><td className="py-4">{dateTime(file.created_at)}</td>
                   </tr>)}
                 </tbody>
               </table>

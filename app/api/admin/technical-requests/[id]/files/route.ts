@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { technicalAdmin,technicalUser,uuidPattern } from "@/lib/technical-requests";
 export const runtime="nodejs";
@@ -16,7 +16,8 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
  const path=`${id}/${crypto.randomUUID()}-${safeName}`;
  const {error:uploadError}=await admin.storage.from("technical-deliverables").upload(path,file,{contentType:file.type,upsert:false});
  if(uploadError)return NextResponse.json({error:"Upload failed"},{status:500});
- const {error}=await admin.from("technical_request_files").insert({request_id:id,storage_path:path,file_name:safeName,mime_type:file.type,size_bytes:file.size});
+ const {error}=await admin.from("technical_request_files").insert({request_id:id,storage_path:path,file_name:safeName,mime_type:file.type,size_bytes:file.size,scan_status:"pending"});
  if(error){await admin.storage.from("technical-deliverables").remove([path]);return NextResponse.json({error:"Unable to record file"},{status:500});}
  return NextResponse.json({ok:true});
 }
+

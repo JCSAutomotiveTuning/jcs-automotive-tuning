@@ -20,6 +20,8 @@ export default function NewOrder() {
   const [message,setMessage] = useState("");
   const [busy,setBusy] = useState(false);
   const [file,setFile] = useState<File|null>(null);
+  const [retryOrderId,setRetryOrderId] = useState<string|null>(null);
+  const [retryQuoteRequired,setRetryQuoteRequired] = useState(false);
   const [service,setService] = useState<string>("ecu_stage1");
   const [fuel,setFuel] = useState<"petrol"|"diesel">("petrol");
   const [addons,setAddons] = useState<string[]>([]);
@@ -54,58 +56,134 @@ export default function NewOrder() {
     e.preventDefault();
     if (busy) return;
     setMessage("");
-    if (dtcReview && !dtcCodes) { setMessage("Enter 1-10 valid P or U fault codes (e.g. P0401, U0100)."); return; }
-    if (file) {
-      const ext=file.name.split(".").pop()?.toLowerCase();
-      if (!ext || !EXTENSIONS.includes(ext)) { setMessage("Unsupported file type."); return; }
-      if (file.size > MAX_FILE_BYTES) { setMessage("Maximum file size is 16 MB."); return; }
-    }
-    setBusy(true);
-    let orderId="";
-    try {
-      const fd = new FormData(e.currentTarget);
-      const payload = Object.fromEntries(fd.entries());
-      delete payload.file;
-      const res=await fetch("/api/orders",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({...payload,serviceCode:service,notes,addons:visibleAddons,fuelType:showEcu?fuel:null,dtcReview,dtcCodes:dtcReview?dtcInput:""}),
-      });
-      const data=await res.json();
-      if(!res.ok) throw new Error(data.error||"Could not create order.");
-      orderId=data.order.id;
-      if(file) {
-        setMessage("Order created. Preparing secure upload...");
-        const up=await fetch("/api/uploads/sign",{
-          method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({orderId,fileName:file.name,fileSize:file.size,contentType:file.type||"application/octet-stream"})
-        });
-        const signed=await up.json();
-        if(!up.ok) throw new Error(signed.error||"Could not prepare upload.");
-        setMessage("Uploading your file...");
-        const upload=await fetch(signed.signedUrl,{
-          method:"PUT",headers:{"Content-Type":file.type||"application/octet-stream","x-upsert":"false"},body:file
-        });
-        if(!upload.ok) throw new Error("File transfer failed.");
-        const complete=await fetch("/api/uploads/complete",{
-          method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({orderId,path:signed.path,fileName:file.name,fileSize:file.size})
-        });
-        const completion=await complete.json();
-        if(!complete.ok) throw new Error(completion.error||"Could not attach uploaded file.");
-      }
-      setMessage(data.quoteRequired
-        ? `Request ${orderId} submitted. JCS will review compatibility and confirm your quote.`
-        : `Order ${orderId} submitted for review.`);
-      e.currentTarget.reset();
-      setFile(null);setAddons([]);setNotes("");setDtcReview(false);setDtcInput("");
-    } catch(error) {
-      const reason=error instanceof Error?error.message:"Unexpected error.";
-      setMessage(orderId
-        ? `Order ${orderId} was created, but setup/upload was incomplete: ${reason}. Contact support with this ID.`
-        : reason);
-    } finally {setBusy(false);}
-  }
 
+    if (!retryOrderId && dtcReview && !dtcCodes) {
+      setMessage("Enter 1-10 valid P or U fault codes.");
+      return;
+    }
+
+    if (file) {
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      if (!ext || !EXTENSIONS.includes(ext)) {
+        setMessage("Unsupported file type.");
+        return;
+      }
+      if (file.size <= 0 || file.size > MAX_FILE_BYTES) {
+        setMessage("File must be between 1 byte and 16 MB.");
+        return;
+      }
+    }
+
+    if (retryOrderId && !file) {
+      setMessage("Choose a file to retry the existing order.");
+      return;
+    }
+
+    setBusy(true);
+    let orderId = retryOrderId || "";
+    let requiresQuote = retryQuoteRequired;
+    const form = e.currentTarget;
+
+    try {
+      if (!orderId) {
+        const fd = new FormData(form);
+        const payload = Object.fromEntries(fd.entries());
+        delete payload.file;
+
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...payload,
+            serviceCode: service,
+            notes,
+            addons: visibleAddons,
+            fuelType: showEcu ? fuel : null,
+            dtcReview,
+            dtcCodes: dtcReview ? dtcInput : ""
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not create order.");
+
+        orderId = data.order.id;
+        requiresQuote = Boolean(data.quoteRequired);
+        setRetryOrderId(orderId);
+        setRetryQuoteRequired(requiresQuote);
+      }
+
+      if (file) {
+        setMessage(`Preparing secure upload for order ${orderId}...`);
+
+        const up = await fetch("/api/uploads/sign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId,
+            fileName: file.name,
+            fileSize: file.size,
+            contentType: file.type || "application/octet-stream"
+          })
+        });
+
+        const signed = await up.json();
+        if (!up.ok) throw new Error(signed.error || "Could not prepare upload.");
+
+        setMessage("Uploading your file...");
+
+        const upload = await fetch(signed.signedUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+            "x-upsert": "false"
+          },
+          body: file
+        });
+
+        if (!upload.ok) throw new Error("File transfer failed.");
+
+        const complete = await fetch("/api/uploads/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId,
+            path: signed.path,
+            fileName: file.name,
+            fileSize: file.size
+          })
+        });
+
+        const completion = await complete.json();
+        if (!complete.ok) {
+          throw new Error(completion.error || "Could not attach uploaded file.");
+        }
+      }
+
+      setMessage(requiresQuote
+        ? `Request ${orderId} created. JCS will review and confirm the quote.`
+        : `Order ${orderId} submitted successfully.`);
+
+      setRetryOrderId(null);
+      setRetryQuoteRequired(false);
+      form.reset();
+      setFile(null);
+      setAddons([]);
+      setNotes("");
+      setDtcReview(false);
+      setDtcInput("");
+
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Unexpected error.";
+
+      setMessage(orderId
+        ? `Order ${orderId} is saved. ${reason} You can retry the upload without creating another order.`
+        : reason);
+
+    } finally {
+      setBusy(false);
+    }
+  }
   return <form onSubmit={submit} style={{display:"grid",gap:20}}>
     <section className="notice">
       <strong>1. Choose your tuning service</strong>
@@ -186,7 +264,7 @@ export default function NewOrder() {
         : `Calculated total: ${pounds((basePrices[service]??0)+addonTotal)} (subject to review)`}</strong>
       <p style={{fontSize:13}}>Do not upload files containing personal information you lack permission to share. Emissions-related options are diagnostic and lawful-repair services only.</p>
     </section>
-    <button className="btn" type="submit" disabled={busy}>{busy?"Submitting...":"Submit tuning request"}</button>
+    <button className="btn" type="submit" disabled={busy}>{busy?"Processing...":retryOrderId?"Retry Upload":"Submit tuning request"}</button>
     {message && <p role="status" aria-live="polite">{message}</p>}
   </form>;
 }

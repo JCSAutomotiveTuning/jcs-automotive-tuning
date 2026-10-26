@@ -1,3 +1,5 @@
+﻿
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -7,42 +9,107 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage() {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) redirect("/login");
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    redirect("/login");
+  }
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle();
-  if (profileError || profile?.role !== "admin") redirect("/dashboard");
+    .single();
+
+  if (profileError || profile?.role !== "admin") {
+    redirect("/dashboard");
+  }
 
   const admin = createAdminClient();
-  const { data: orders, error } = await admin.from("orders")
-    .select("id,user_id,service_code,service_name,amount_pence,currency,status,payment_status,vehicle_make,vehicle_model,engine_code,software_id,customer_notes,admin_notes,created_at,updated_at")
+
+  const { data: orders, error } = await admin
+    .from("orders")
+    .select(
+      "id,user_id,service_code,service_name,amount_pence,currency,status,payment_status,vehicle_make,vehicle_model,engine_code,software_id,customer_notes,admin_notes,created_at"
+    )
     .order("created_at", { ascending: false })
     .limit(200);
+
   if (error) {
     console.error("Admin orders page query failed:", error.message);
-    throw new Error("Unable to load tuning orders.");
   }
 
-  const ids = Array.from(new Set((orders ?? []).map((order) => order.user_id)));
-  let emails: Record<string, string> = {};
-  if (ids.length) {
-    const { data: customers, error: customersError } = await admin.from("profiles")
+  const userIds = [
+    ...new Set((orders ?? []).map((order) => order.user_id)),
+  ];
+
+  let emailByUserId: Record<string, string> = {};
+
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await admin
+      .from("profiles")
       .select("id,email")
-      .in("id", ids);
-    if (customersError) {
-      console.error("Order customer lookup failed:", customersError.message);
-      throw new Error("Unable to load order customers.");
+      .in("id", userIds);
+
+    if (profilesError) {
+      console.error(
+        "Admin customer profiles query failed:",
+        profilesError.message
+      );
+    } else {
+      emailByUserId = Object.fromEntries(
+        (profiles ?? []).map((item) => [
+          item.id,
+          item.email ?? "Unknown customer",
+        ])
+      );
     }
-    emails = Object.fromEntries((customers ?? []).map((customer) => [customer.id, customer.email ?? "Unknown customer"]));
   }
 
-  const initialOrders = (orders ?? []).map((order) => ({
+  const rows = (orders ?? []).map((order) => ({
     ...order,
-    customer_email: emails[order.user_id] ?? "Unknown customer",
+    customer_email: emailByUserId[order.user_id] ?? "Unknown customer",
   }));
-  return <OrdersManager initialOrders={initialOrders} />;
+
+  return (
+    <main className="admin-shell">
+      <header className="admin-header">
+        <div>
+          <p className="eyebrow">JCS AUTOMOTIVE TUNING</p>
+          <h1>Orders Management</h1>
+          <p className="muted">
+            Review customer submissions, set custom quotes, and manage job
+            progress.
+          </p>
+        </div>
+
+        <Link className="button button-secondary" href="/admin">
+          Back to overview
+        </Link>
+      </header>
+
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <h2>Customer orders</h2>
+            <p className="muted">
+              Showing the latest {rows.length} orders.
+            </p>
+          </div>
+        </div>
+
+        {error ? (
+          <p className="error-message">
+            Orders could not be loaded. Check the server logs.
+          </p>
+        ) : (
+          <OrdersManager initialOrders={rows} />
+        )}
+      </section>
+    </main>
+  );
 }

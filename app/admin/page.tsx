@@ -40,7 +40,7 @@ const navigation = [
     label: "Wallet & Credits",
     description: "Customer balances",
     href: "/admin/wallet",
-    icon: "Â£",
+    icon: "£",
   },
   {
     label: "Transactions",
@@ -156,7 +156,7 @@ export default async function AdminDashboard() {
       label: "Wallet credits",
       value: money(totalCredits),
       detail: "Combined customer balances",
-      icon: "Â£",
+      icon: "£",
       accent: "border-t-sky-400",
       iconStyle: "bg-sky-400/10 text-sky-300",
     },
@@ -566,5 +566,6 @@ export default async function AdminDashboard() {
     </>
   );
 }
+
 
 

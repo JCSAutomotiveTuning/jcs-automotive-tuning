@@ -76,7 +76,7 @@ export default function WalletManager() {
     setError("");
     setSuccess("");
     if (!selected || signedAmount === null || !reason.trim()) {
-      setError("Select an account, enter Â£0.01â€“Â£10,000.00 and provide a reason.");
+      setError("Select an account, enter £0.01â€“£10,000.00 and provide a reason.");
       return;
     }
     if (insufficientFunds) {
@@ -131,7 +131,7 @@ export default function WalletManager() {
             <div><label htmlFor="jcs-account" className="mb-1.5 block text-xs font-bold text-slate-400">Select account</label><select id="jcs-account" value={selectedId} onChange={(e) => { setSelectedId(e.target.value); setError(""); setSuccess(""); }} disabled={loading || saving} required className="w-full rounded-xl border border-white/10 bg-[#090d14] px-3 py-3 text-sm text-white focus:border-sky-400 focus:outline-none disabled:opacity-50"><option value="">Choose an accountâ€¦</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.email ?? account.id} ({account.role ?? "account"}) â€” {money(Number(account.wallet.balance_pence || 0))}</option>)}</select></div>
             {selected && <p className="text-sm text-slate-400">Current balance: <strong className="text-white">{money(Number(selected.wallet.balance_pence || 0))}</strong></p>}
             <div><label htmlFor="jcs-direction" className="mb-1.5 block text-xs font-bold text-slate-400">Adjustment</label><select id="jcs-direction" value={direction} onChange={(e) => setDirection(e.target.value as "credit" | "debit")} className="w-full rounded-xl border border-white/10 bg-[#090d14] px-3 py-3 text-sm text-white"><option value="credit">Add credit (+)</option><option value="debit">Deduct credit (âˆ’)</option></select></div>
-            <div><label htmlFor="jcs-amount" className="mb-1.5 block text-xs font-bold text-slate-400">Amount (Â£)</label><input id="jcs-amount" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="20.00" required className="w-full rounded-xl border border-white/10 bg-[#090d14] px-3 py-3 text-sm text-white focus:border-sky-400 focus:outline-none" /></div>
+            <div><label htmlFor="jcs-amount" className="mb-1.5 block text-xs font-bold text-slate-400">Amount (£)</label><input id="jcs-amount" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="20.00" required className="w-full rounded-xl border border-white/10 bg-[#090d14] px-3 py-3 text-sm text-white focus:border-sky-400 focus:outline-none" /></div>
             <div><label htmlFor="jcs-reason" className="mb-1.5 block text-xs font-bold text-slate-400">Reason (audit trail)</label><textarea id="jcs-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} required rows={3} placeholder="e.g. Credit correction following customer support request" className="w-full resize-y rounded-xl border border-white/10 bg-[#090d14] px-3 py-3 text-sm text-white focus:border-sky-400 focus:outline-none" /></div>
             {insufficientFunds && <p role="alert" className="text-sm text-rose-300">This deduction exceeds the account&apos;s current balance.</p>}
             <button type="submit" disabled={saving || loading || !selected || signedAmount === null || !reason.trim() || Boolean(insufficientFunds)} className="w-full rounded-xl bg-sky-400 px-4 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Savingâ€¦" : "Confirm adjustment"}</button>

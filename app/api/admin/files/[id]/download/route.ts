@@ -61,12 +61,9 @@ export async function GET(
     );
   }
 
-  if (
-    file.scan_status === "blocked" ||
-    file.scan_status === "error"
-  ) {
+  if (file.scan_status !== "clean") {
     return NextResponse.json(
-      { error: "This file is blocked or has a scanning error." },
+      { error: "This file has not passed safety validation." },
       { status: 409 }
     );
   }
