@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,6 +88,70 @@ export async function GET(req:Request) {
      } else {
       subject="More information needed for your JCS tuning order";
       body=`We need additional information before continuing your JCS Automotive Tuning order. Please sign in to your portal to review your order and contact our team: ${safeUrl()}/dashboard`;
+     }
+    } else if(event.event_type==="technical_request_message") {
+     const messageId=event.payload.message_id;
+     const requestId=event.payload.request_id;
+     const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+     if(typeof messageId!=="string"||!uuid.test(messageId)||
+        typeof requestId!=="string"||!uuid.test(requestId)) {
+      throw new Error("Invalid technical message payload");
+     }
+
+     const {data:message,error:messageError}=await db
+      .from("technical_request_messages")
+      .select("id,request_id,sender_id,sender_role")
+      .eq("id",messageId)
+      .maybeSingle();
+
+     const {data:ticket,error:ticketError}=await db
+      .from("technical_requests")
+      .select("id,user_id")
+      .eq("id",requestId)
+      .maybeSingle();
+
+     if(messageError||ticketError)throw new Error("Technical message lookup failed");
+
+     let recipientValid=false;
+
+     if(message&&ticket&&message.request_id===ticket.id&&
+        message.sender_id!==event.user_id) {
+      if(message.sender_role==="admin") {
+       recipientValid=event.user_id===ticket.user_id;
+      } else if(message.sender_role==="customer"&&
+                message.sender_id===ticket.user_id) {
+       const {data:recipient,error:roleError}=await db
+        .from("profiles")
+        .select("role")
+        .eq("id",event.user_id)
+        .maybeSingle();
+
+       if(roleError)throw new Error("Admin recipient lookup failed");
+       recipientValid=recipient?.role==="admin";
+      }
+     }
+
+     if(!recipientValid) {
+      const {error:skipError}=await db.from("notification_outbox")
+       .update({
+        status:"sent",
+        sent_at:new Date().toISOString(),
+        last_error:"Technical message recipient mismatch; skipped",
+        locked_at:null
+       })
+       .eq("id",event.id);
+
+      if(skipError)throw new Error("Unable to skip invalid notification");
+      continue;
+     }
+
+     if(message?.sender_role==="customer") {
+      subject="New customer message - JCS Automotive Tuning";
+      body=`A customer has sent a message on a technical request. Sign in to review it: ${safeUrl()}/admin/technical-requests`;
+     } else {
+      subject="New reply from JCS Automotive Tuning";
+      body=`You have received a reply to your technical request. Sign in to view it: ${safeUrl()}/dashboard/technical-requests`;
      }
     } else throw new Error("Unknown event type");
    const channels: Array<{name:"email"|"sms";enabled:boolean;destination:string|null}>= [
