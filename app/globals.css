@@ -408,3 +408,36 @@ main.jcs-admin-dashboard h3 {
 .jcs-prices-hidden .jcs-money-hidden {
   display: inline !important;
 }
+
+
+/* JCS responsive layout hardening */
+html,body{max-width:100%;overflow-x:clip}
+.wrap{width:100%;max-width:1240px;margin-inline:auto;padding-inline:clamp(12px,3vw,28px)}
+.wrap>*{min-width:0}
+.nav{flex-wrap:wrap;min-width:0}
+.nav>.row{flex:1 1 460px;justify-content:flex-end;flex-wrap:wrap}
+.nav .brand{white-space:normal;overflow-wrap:anywhere;line-height:1.05}
+.nav .btn{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.card,.hero,.grid>*{min-width:0;max-width:100%}
+.card{overflow-wrap:anywhere}
+.card pre,.card code{overflow-wrap:anywhere;white-space:pre-wrap}
+.card table{display:block;max-width:100%;overflow-x:auto}
+.card svg,.card img{max-width:100%;height:auto}
+.card input[type="file"]{max-width:100%}
+.card .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.card .row{flex-wrap:wrap}
+.hero h1{font-size:clamp(2.25rem,6vw,4.25rem);overflow-wrap:anywhere}
+@media(max-width:760px){
+ .nav{flex-direction:column;align-items:stretch;gap:14px}
+ .nav>.row{flex:0 1 auto;justify-content:flex-start;width:100%}
+ .nav .btn{flex:1 1 140px}
+ .wrap{padding-inline:14px}
+ .card{padding:clamp(14px,4vw,20px)}
+ .hero{padding-block:30px 18px}
+ .order-progress{overflow-x:auto}
+}
+@media(max-width:380px){
+ .nav .row .btn{flex-basis:100%}
+ .pill{max-width:100%}
+ .card{border-radius:12px}
+}
