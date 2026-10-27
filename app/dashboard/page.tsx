@@ -101,7 +101,7 @@ export default async function Dashboard() {
     supabase
       .from("orders")
       .select(
-        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,order_files(id)"
+        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,order_files(id,scan_status)"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -259,6 +259,15 @@ export default async function Dashboard() {
                     )}
 
                     <p className="order-detail">{progress.detail}</p>
+                    {(o.order_files?.length ?? 0) > 0 && (
+                      <p className="order-detail" aria-label="Uploaded file security status">
+                        File safety: {o.order_files.some(f => f.scan_status === "infected")
+                          ? "Quarantined — contact support"
+                          : o.order_files.every(f => f.scan_status === "clean")
+                            ? "Safety check passed"
+                            : "Awaiting safety validation — downloads restricted"}
+                      </p>
+                    )}
 
                     {!progress.closed && (
                       <ol
