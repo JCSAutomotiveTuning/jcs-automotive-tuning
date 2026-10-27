@@ -212,11 +212,7 @@ export default async function Dashboard() {
                   o.payment_status === "unpaid" &&
                   o.currency === "GBP" &&
                   Number.isSafeInteger(o.amount_pence) &&
-                  o.amount_pence > 0 &&
-                  (o.order_files?.length ?? 0) === 0 &&
-                  !["custom_ecu", "custom_tcu", "ecu_tcu_package"].includes(
-                    o.service_code
-                  );
+                  (o.order_files?.length ?? 0) === 0;
 
                 return (
                   <article className="order-entry order-card" key={o.id}>
@@ -254,7 +250,7 @@ export default async function Dashboard() {
                     <p className="order-detail">{progress.detail}</p>
                     {(o.order_files?.length ?? 0) > 0 && (
                       <p className="order-detail" aria-label="Uploaded file security status">
-                        File safety: {o.order_files.some(f => f.scan_status === "infected")
+                        File safety: {o.order_files.some(f => f.scan_status === "blocked")
                           ? "Quarantined — contact support"
                           : o.order_files.every(f => f.scan_status === "clean")
                             ? "Safety check passed"
