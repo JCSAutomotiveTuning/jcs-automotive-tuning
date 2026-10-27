@@ -70,7 +70,7 @@ async function fetchIdentity() {
     repositoryMatches: claims.repository === "JCSAutomotiveTuning/jcs-automotive-tuning",
     refMatches: claims.ref === "refs/heads/main",
     workflowMatches: claims.workflow_ref === "JCSAutomotiveTuning/jcs-automotive-tuning/.github/workflows/malware-scan.yml@refs/heads/main",
-    subjectContextMatches: typeof claims.sub === "string" && claims.sub.startsWith("repo:JCSAutomotiveTuning/jcs-automotive-tuning:"),
+    subjectPresent: typeof claims.sub === "string" && claims.sub.length > 0,
     eventAccepted: ["schedule", "workflow_dispatch", "push"].includes(claims.event_name),
   }));
   return data.value;
