@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ADDONS, ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE, type AddonGroup } from "@/lib/tuning-addons";
 
 const SERVICE_OPTIONS = [
@@ -8,6 +8,7 @@ const SERVICE_OPTIONS = [
   ["ecu_stage1", "ECU Stage 1 file service - GBP 55"],
   ["dsg_tcu", "DSG / TCU calibration review - GBP 70"],
   ["log_review", "ECU / TCU file check & review - GBP 20"],
+  ["datalog_analysis", "Datalog analysis (VCDS / OBD / ECU / TCU logs) - GBP 20"],
   ["emissions_diagnostics", "DPF / EGR diagnostics and lawful repair assessment - GBP 30"],
   ["custom_ecu", "Custom ECU tuning - from GBP 195"],
   ["custom_tcu", "Custom DSG / TCU tuning - from GBP 195"],
@@ -21,6 +22,7 @@ export default function NewOrder() {
   const [message,setMessage] = useState("");
   const [busy,setBusy] = useState(false);
   const [file,setFile] = useState<File|null>(null);
+  const [logFile,setLogFile] = useState<File|null>(null);
   const [retryOrderId,setRetryOrderId] = useState<string|null>(null);
   const [retryQuoteRequired,setRetryQuoteRequired] = useState(false);
   const [service,setService] = useState<string>("ecu_stage1");
@@ -30,17 +32,23 @@ export default function NewOrder() {
   const [dtcReview,setDtcReview] = useState(false);
   const [dtcInput,setDtcInput] = useState("");
 
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("service");
+    if (requested && SERVICE_OPTIONS.some(([code]) => code === requested)) setService(requested);
+  }, []);
+
   const tcuService = service === "dsg_tcu" || service === "custom_tcu";
-  const reviewOnly = service === "log_review" || service === "emissions_diagnostics";
+  const reviewOnly = service === "log_review" || service === "datalog_analysis" || service === "emissions_diagnostics";
   const showEcu = !tcuService && !reviewOnly;
   const showTcu = tcuService || service === "ecu_tcu_package" || service === "addons_only";
   const visibleGroups: AddonGroup[] = [
+    ...(!reviewOnly ? ["diagnostics" as const] : []),
     ...(showEcu ? [fuel] : []),
     ...(showTcu ? ["tcu" as const] : []),
   ];
   const visibleAddons = addons.filter(a => visibleGroups.some(g => a.startsWith(`${g}:`)));
   const basePrices: Record<string,number> = {
-    addons_only:0,ecu_stage1:5500,dsg_tcu:7000,log_review:2000,
+    addons_only:0,ecu_stage1:5500,dsg_tcu:7000,log_review:2000,datalog_analysis:2000,
     emissions_diagnostics:3000,custom_ecu:19500,custom_tcu:19500,ecu_tcu_package:0,
   };
   const dtcCodes = dtcReview ? parseDtcCodes(dtcInput) : [];
@@ -68,19 +76,32 @@ export default function NewOrder() {
       return;
     }
 
-    if (file) {
-      const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!retryOrderId && service === "datalog_analysis" && !file) {
+      setMessage("Please attach a CSV, LOG or TXT datalog for this analysis request.");
+      return;
+    }
+    if (!retryOrderId && visibleAddons.includes("diagnostics:datalog_analysis") && !logFile) {
+      setMessage("Please attach a separate CSV, LOG or TXT datalog for the analysis add-on.");
+      return;
+    }
+
+    for (const uploadFile of [file, logFile].filter((item): item is File => Boolean(item))) {
+      const ext = uploadFile.name.split(".").pop()?.toLowerCase();
       if (!ext || !EXTENSIONS.includes(ext)) {
         setMessage("Unsupported file type.");
         return;
       }
-      if (file.size <= 0 || file.size > MAX_FILE_BYTES) {
-        setMessage("File must be between 1 byte and 16 MB.");
+      if ((uploadFile === logFile || (service === "datalog_analysis" && uploadFile === file)) && !["csv", "log", "txt"].includes(ext)) {
+        setMessage("Datalogs must be CSV, LOG or TXT files.");
+        return;
+      }
+      if (uploadFile.size <= 0 || uploadFile.size > MAX_FILE_BYTES) {
+        setMessage("Each file must be between 1 byte and 16 MB.");
         return;
       }
     }
 
-    if (retryOrderId && !file) {
+    if (retryOrderId && !file && !logFile) {
       setMessage("Choose a file to retry the existing order.");
       return;
     }
@@ -119,7 +140,7 @@ export default function NewOrder() {
         setRetryQuoteRequired(requiresQuote);
       }
 
-      if (file) {
+      for (const uploadFile of [file, logFile].filter((item): item is File => Boolean(item))) {
         setMessage(`Preparing secure upload for order ${orderId}...`);
 
         const up = await fetch("/api/uploads/sign", {
@@ -127,9 +148,9 @@ export default function NewOrder() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             orderId,
-            fileName: file.name,
-            fileSize: file.size,
-            contentType: file.type || "application/octet-stream"
+            fileName: uploadFile.name,
+            fileSize: uploadFile.size,
+            contentType: uploadFile.type || "application/octet-stream"
           })
         });
 
@@ -141,10 +162,10 @@ export default function NewOrder() {
         const upload = await fetch(signed.signedUrl, {
           method: "PUT",
           headers: {
-            "Content-Type": file.type || "application/octet-stream",
+            "Content-Type": uploadFile.type || "application/octet-stream",
             "x-upsert": "false"
           },
-          body: file
+          body: uploadFile
         });
 
         if (!upload.ok) throw new Error("File transfer failed.");
@@ -155,8 +176,8 @@ export default function NewOrder() {
           body: JSON.stringify({
             orderId,
             path: signed.path,
-            fileName: file.name,
-            fileSize: file.size
+            fileName: uploadFile.name,
+            fileSize: uploadFile.size
           })
         });
 
@@ -174,6 +195,7 @@ export default function NewOrder() {
       setRetryQuoteRequired(false);
       form.reset();
       setFile(null);
+      setLogFile(null);
       setAddons([]);
       setNotes("");
       setDtcReview(false);
@@ -217,7 +239,7 @@ export default function NewOrder() {
         </select>
       </div>}
       {visibleGroups.map(group=><fieldset key={group} style={{border:"1px solid #64748b55",borderRadius:12,padding:16,marginTop:12}}>
-        <legend style={{fontWeight:700,padding:"0 8px"}}>{group==="tcu"?"TCU / Gearbox":group==="petrol"?"Petrol ECU":"Diesel ECU"} add-ons</legend>
+        <legend style={{fontWeight:700,padding:"0 8px"}}>{group==="diagnostics"?"Diagnostic":group==="tcu"?"TCU / Gearbox":group==="petrol"?"Petrol ECU":"Diesel ECU"} add-ons</legend>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
           {ADDONS[group].map(([id,label])=>{
             const key=`${group}:${id}`;
@@ -246,20 +268,31 @@ export default function NewOrder() {
     <section>
       <h3>4. Job notes and original file</h3>
       <div className="field">
-        <label htmlFor="notes">{service === "log_review" ? "File review details / concerns" : "Job notes"}</label>
-        <textarea id="notes" name="notes" rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={service === "log_review" ? "ECU/TCU type, original or modified file, suspected problems, DTCs, and what you want checked..." : "Symptoms, hardware changes, read tool, goals..."} maxLength={2500}/>
+        <label htmlFor="notes">{service === "datalog_analysis" ? "Datalog readings, symptoms and test conditions" : service === "log_review" ? "File review details / concerns" : "Job notes"}</label>
+        <textarea id="notes" name="notes" rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={service === "datalog_analysis" ? "Vehicle/ECU type, logger used, units and channels, gear and RPM range, boost/fuelling/shift symptoms..." : service === "log_review" ? "ECU/TCU type, original or modified file, suspected problems, DTCs, and what you want checked..." : "Symptoms, hardware changes, read tool, goals..."} maxLength={2500}/>
       </div>
+      {service === "datalog_analysis" && <div className="notice">
+        <strong>£20 Datalog Analysis</strong>
+        <p>Upload a real CSV, LOG or TXT recording from VCDS, OBD or your ECU/TCU logger. A technician will review the recorded channels and provide findings. This is not an automatic analyser or dyno power measurement.</p>
+      </div>}
       {service === "log_review" && <div className="notice">
         <strong>£20 ECU / TCU file review</strong>
         <p>Describe the ECU/TCU file and what you want checked in the notes box above. Attach the original file where available. Datalog analysis is presented separately in the Datalog Review area.</p>
       </div>}
       <div className="field">
-        <label htmlFor="order-file">Original read file (optional)</label>
-        <input id="order-file" name="file" type="file" accept=".bin,.ori,.hex,.frf,.odx,.txt,.csv,.log,.zip" disabled={busy}
+        <label htmlFor="order-file">{service === "datalog_analysis" ? "Datalog file (required)" : "Original ECU / TCU read file (optional)"}</label>
+        <input id="order-file" name="file" type="file" accept={service === "datalog_analysis" ? ".csv,.log,.txt" : ".bin,.ori,.hex,.frf,.odx,.txt,.csv,.log,.zip"} disabled={busy}
           onChange={e=>setFile(e.target.files?.[0]||null)}/>
         <small className="file-help">BIN, ORI, HEX, FRF, ODX, TXT, CSV, LOG, ZIP - max 16 MB</small>
         {file && <small className="file-selected">Selected: {file.name} ({(file.size/1024/1024).toFixed(2)} MB)</small>}
       </div>
+      {visibleAddons.includes("diagnostics:datalog_analysis") && <div className="field">
+        <label htmlFor="datalog-file">Datalog Analysis add-on file (required)</label>
+        <input id="datalog-file" type="file" accept=".csv,.log,.txt" disabled={busy}
+          onChange={e=>setLogFile(e.target.files?.[0] || null)}/>
+        <small className="file-help">Attach the separate log recording (CSV, LOG, TXT, max 16 MB). It is uploaded securely alongside the ECU / TCU file.</small>
+        {logFile && <small className="file-selected">Selected: {logFile.name} ({(logFile.size/1024/1024).toFixed(2)} MB)</small>}
+      </div>}
     </section>
     <section className="notice" aria-live="polite">
       <strong>Order summary</strong>
