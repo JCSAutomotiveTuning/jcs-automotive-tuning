@@ -49,7 +49,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
   const admin = createAdminClient();
   let customersQuery = admin
     .from("profiles")
-    .select("id,email,created_at")
+    .select("id,email,created_at,full_name,username,phone,address_line_1,address_line_2,city,postcode,country,tuning_tools")
     .eq("role", "customer")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -227,7 +227,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Email</th>
+                  <th>Customer</th><th>Email / Phone</th><th>Address / Tools</th>
                   <th>Registered</th>
                   <th>Wallet balance</th>
                   <th>Total orders</th>
@@ -237,7 +237,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
               <tbody>
                 {rows.map((customer) => (
                   <tr key={customer.id}>
-                    <td>
+                    <td><strong>{customer.full_name || "Name not provided"}</strong><div className="muted">{customer.username ? `@${customer.username}` : "No username"}</div></td><td>
                       {customer.email ? (
                         <a href={`mailto:${customer.email}`}>
                           {customer.email}
@@ -245,7 +245,8 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
                       ) : (
                         "No email"
                       )}
-                    </td>
+                      <div className="muted">{customer.phone || "No phone"}</div>
+                    </td><td><div>{[customer.address_line_1,customer.address_line_2,customer.city,customer.postcode,customer.country].filter(Boolean).join(", ") || "No address"}</div><div className="muted">{customer.tuning_tools || "No tools listed"}</div></td>
                     <td>
                       {customer.created_at
                         ? new Date(customer.created_at).toLocaleDateString("en-GB")
