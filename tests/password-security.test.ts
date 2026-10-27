@@ -20,7 +20,7 @@ describe("Customer password defence in depth", () => {
     expect(request).toHaveBeenCalledTimes(1);
     const [url, opts] = request.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.pwnedpasswords.com/range/5BAA6");
-    expect(url).not.toContain("password");
+    expect(url.split("/range/")[1]).toHaveLength(5);
     expect(opts.headers).toEqual({ "Add-Padding": "true" });
   });
 
