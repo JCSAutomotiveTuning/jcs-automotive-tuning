@@ -6,7 +6,7 @@ import { ADDONS, ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE
 const SERVICE_OPTIONS = [
   ["ecu_stage1", "ECU Stage 1 file service - GBP 55"],
   ["dsg_tcu", "DSG / TCU calibration review - GBP 70"],
-  ["log_review", "Diagnostic log / file review - GBP 20"],
+  ["log_review", "ECU / TCU file check & review - GBP 20"],
   ["emissions_diagnostics", "DPF / EGR diagnostics and lawful repair assessment - GBP 30"],
   ["custom_ecu", "Custom ECU tuning - from GBP 195"],
   ["custom_tcu", "Custom DSG / TCU tuning - from GBP 195"],
@@ -239,12 +239,12 @@ export default function NewOrder() {
     <section>
       <h3>4. Job notes and original file</h3>
       <div className="field">
-        <label htmlFor="notes">{service === "log_review" ? "Log readings / symptoms / review request" : "Job notes"}</label>
-        <textarea id="notes" name="notes" rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={service === "log_review" ? "Paste log excerpts and describe the fault, RPM range, load, gear, requested/actual values, and what you want reviewed..." : "Symptoms, hardware changes, read tool, goals..."} maxLength={2500}/>
+        <label htmlFor="notes">{service === "log_review" ? "File review details / concerns" : "Job notes"}</label>
+        <textarea id="notes" name="notes" rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={service === "log_review" ? "ECU/TCU type, original or modified file, suspected problems, DTCs, and what you want checked..." : "Symptoms, hardware changes, read tool, goals..."} maxLength={2500}/>
       </div>
       {service === "log_review" && <div className="notice">
-        <strong>£20 technician datalog review</strong>
-        <p>Paste relevant log readings, symptoms, test conditions and what you want checked into the Job notes box above. Attach the full CSV, LOG or TXT file below for an accurate review. A road datalog is not a measured dyno run.</p>
+        <strong>£20 ECU / TCU file review</strong>
+        <p>Describe the ECU/TCU file and what you want checked in the notes box above. Attach the original file where available. Datalog analysis is presented separately in the Datalog Review area.</p>
       </div>}
       <div className="field">
         <label htmlFor="order-file">Original read file (optional)</label>
