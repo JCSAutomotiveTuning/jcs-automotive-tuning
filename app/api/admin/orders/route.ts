@@ -220,6 +220,24 @@ export async function PATCH(req: Request) {
       );
     }
 
+    // Quote-priced jobs must have an explicitly saved, audited final price
+    // before an admin can request Stripe payment (including via status update).
+    if ((action === "request_payment" || (action === "update" && status === "awaiting_payment"))
+        && quoteableServices.includes(existing.service_code)) {
+      const { count, error: quoteError } = await admin.from("order_audit")
+        .select("id", { count: "exact", head: true })
+        .eq("order_id", orderId)
+        .eq("action", "admin_order_updated")
+        .contains("details", { action_type: "quote_saved" });
+      if (quoteError) {
+        console.error("Quote confirmation lookup failed:", quoteError.message);
+        return NextResponse.json({ error: "Could not verify the agreed final quote." }, { status: 503 });
+      }
+      if (!count) {
+        return NextResponse.json({ error: "Save and confirm a final quote before requesting payment for this service." }, { status: 409 });
+      }
+    }
+
     if (action === "save_quote") {
       if (!quoteableServices.includes(existing.service_code)) {
         return NextResponse.json(
@@ -444,6 +462,8 @@ export async function PATCH(req: Request) {
       .from("orders")
       .update(changes)
       .eq("id", orderId)
+      .eq("status", existing.status)
+      .eq("payment_status", existing.payment_status)
       .select(
         "id,amount_pence,status,payment_status,admin_notes,updated_at"
       )
