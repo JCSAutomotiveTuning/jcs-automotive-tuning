@@ -145,6 +145,11 @@ export async function POST(req: Request) {
     );
   }
 
+  // Do not trust client-provided filenames: the stored name must match the declared name.
+  if (match[1] !== v.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")) {
+    return NextResponse.json({ error: "Uploaded filename does not match this request." }, { status: 400 });
+  }
+
   const actualSize = Number(object.metadata.size);
 
   if (
