@@ -11,7 +11,7 @@ export const SERVICES = {
     pricePence: 7000,
   },
   log_review: {
-    name: "Diagnostic log / file review",
+    name: "ECU / TCU file check & review",
     pricePence: 2000,
   },
   emissions_diagnostics: {
