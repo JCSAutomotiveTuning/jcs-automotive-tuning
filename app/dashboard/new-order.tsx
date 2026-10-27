@@ -46,7 +46,7 @@ export default function NewOrder() {
   const dtcCodes = dtcReview ? parseDtcCodes(dtcInput) : [];
   const dtcTotal = dtcReview && dtcCodes ? DTC_REVIEW_PRICE_PENCE : 0;
   const addonTotal = visibleAddons.reduce((sum,key)=>sum+(addonPrice(key)??0),0) + dtcTotal;
-  const quoteRequired = ["ecu_tcu_package","custom_ecu","custom_tcu"].includes(service) ||
+  const quoteRequired = ["ecu_tcu_package","custom_ecu","custom_tcu","addons_only"].includes(service) ||
     visibleAddons.some(key=>addonPrice(key)===null);
   const pounds=(pence:number)=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(pence/100);
   const toggle = (key:string, checked:boolean) => setAddons(current =>
@@ -273,6 +273,7 @@ export default function NewOrder() {
       <strong>{quoteRequired
         ? `Indicative subtotal: ${pounds((basePrices[service]??0)+addonTotal)} + custom quote items (final price to be confirmed)`
         : `Calculated total: ${pounds((basePrices[service]??0)+addonTotal)} (subject to review)`}</strong>
+      <p><strong>File submission included:</strong> No separate £20 upload fee or wallet top-up is required. You pay the confirmed service price once through order checkout.</p>
       <p style={{fontSize:13}}>Do not upload files containing personal information you lack permission to share. Emissions-related options are diagnostic and lawful-repair services only.</p>
     </section>
     <button className="btn" type="submit" disabled={busy}>{busy?"Processing...":retryOrderId?"Retry Upload":"Submit tuning request"}</button>
