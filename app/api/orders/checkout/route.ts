@@ -28,6 +28,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Payments are not configured correctly." }, { status: 503 });
     }
 
+    if (process.env.VERCEL_ENV === "production" && !secretKey.startsWith("sk_live_")) {
+      console.error("Production checkout requires a live Stripe secret key.");
+      return NextResponse.json({ error: "Live payments are not configured correctly." }, { status: 503 });
+    }
+    if (process.env.VERCEL_ENV === "preview" && !secretKey.startsWith("sk_test_")) {
+      console.error("Preview checkout requires a test-mode Stripe secret key.");
+      return NextResponse.json({ error: "Test payments are not configured correctly." }, { status: 503 });
+    }
+
     const admin = createAdminClient();
     const { data: order, error: orderError } = await admin.from("orders")
       .select("id,user_id,service_code,service_name,amount_pence,currency,status,payment_status,checkout_session_id,checkout_attempt_id")
