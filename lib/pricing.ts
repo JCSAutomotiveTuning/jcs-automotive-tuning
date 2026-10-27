@@ -2,6 +2,10 @@
 // Never trust a price submitted by the browser.
 
 export const SERVICES = {
+  addons_only: {
+    name: "Add-ons only — select required features",
+    pricePence: 0,
+  },
   ecu_stage1: {
     name: "ECU Stage 1 file service",
     pricePence: 5500,
