@@ -50,6 +50,20 @@ export default function VehicleLookup() {
     }catch(e){setEcuError(e instanceof Error?e.message:"Vehicle lookup failed");}
     finally{setEcuBusy(false);}
   }
+  const [vin,setVin]=useState("");
+  const [vinResult,setVinResult]=useState<RecordData|null>(null);
+  const [vinError,setVinError]=useState("");
+  const [vinBusy,setVinBusy]=useState(false);
+  async function decodeVin(e:FormEvent<HTMLFormElement>) {
+    e.preventDefault();setVinBusy(true);setVinError("");setVinResult(null);
+    try {
+      const response=await fetch("/api/vin-decode?"+new URLSearchParams({vin:vin.trim().toUpperCase()}),{cache:"no-store"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"VIN lookup failed");
+      setVinResult(asRecord(data));
+    } catch(e){setVinError(e instanceof Error?e.message:"VIN lookup failed");}
+    finally{setVinBusy(false);}
+  }
   const [registration,setRegistration]=useState("");
   const [result,setResult]=useState<Lookup|null>(null);
   const [error,setError]=useState("");
@@ -68,5 +82,8 @@ export default function VehicleLookup() {
   {steps.map((step,index)=>options[index].length>0&&<div className="field" key={step}><label htmlFor={step}>{["Make","Model","Generation","Engine"][index]}</label><select id={step} value={selected[index]} onChange={e=>selectStep(index,e.target.value)}><option value="">Select {step}</option>{options[index].map((item,i)=><option key={identifier(item)||i} value={identifier(item)}>{label(item)}</option>)}</select></div>)}
   {ecuError&&<p role="alert">{ecuError}</p>}
   {ecuResult&&<section aria-live="polite"><h2>ECU catalogue result</h2><p>Reference data only. Check ECU hardware/software ID before ordering a file.</p><dl>{Object.entries(ecuResult).filter(([key])=>!["photo","logo","logo_url"].includes(key)).map(([key,value])=><div key={key} style={{marginBottom:10}}><dt><strong>{key.replaceAll("_"," ")}</strong></dt><dd style={{marginLeft:0,overflowWrap:"anywhere"}}>{display(value)}</dd></div>)}</dl></section>}
+  <h2>Free VIN decoder</h2><p>Enter a 17-character VIN to retrieve available manufacturer-submitted vehicle specifications from NHTSA vPIC. UK vehicle data may be incomplete.</p><form onSubmit={decodeVin}><div className="field"><label htmlFor="vin">Vehicle identification number (VIN)</label><input id="vin" value={vin} onChange={e=>setVin(e.target.value.toUpperCase())} minLength={17} maxLength={17} pattern="[A-HJ-NPR-Za-hj-npr-z0-9]{17}" placeholder="17-character VIN" autoComplete="off" required/></div><button className="btn" disabled={vinBusy}>{vinBusy?"Decoding…":"Decode VIN (free)"}</button></form>
+  {vinError&&<p role="alert">{vinError}</p>}
+  {vinResult&&<section aria-live="polite"><h2>VIN decode results</h2>{vinResult.warning&&<p role="status">{display(vinResult.warning)}</p>}<dl>{Object.entries(asRecord(vinResult.vehicle)).map(([key,value])=><div key={key} style={{marginBottom:10}}><dt><strong>{key.replace(/([A-Z])/g," $1")}</strong></dt><dd style={{marginLeft:0}}>{display(value)}</dd></div>)}</dl><p>ECU, Stage 1 gains, EGR, DPF and AdBlue are not verified by this VIN decoder.</p></section>}
   <h2>UK registration search</h2><form onSubmit={search}><div className="field"><label htmlFor="registration">UK registration</label><input id="registration" name="registration" value={registration} onChange={e=>setRegistration(e.target.value.toUpperCase())} maxLength={10} placeholder="AB12 CDE" required/></div><button className="btn" disabled={busy}>{busy?"Searching…":"Search vehicle"}</button></form>{error&&<p role="alert">{error}</p>}{result&&<section aria-live="polite"><h2>Vehicle details</h2><dl>{Object.entries({"Registration":result.vehicle.registrationNumber,"Make":result.vehicle.make,"Year":result.vehicle.yearOfManufacture,"Engine capacity (cc)":result.vehicle.engineCapacity,"Fuel":result.vehicle.fuelType,"Euro classification":result.vehicle.euroStatus,"Colour":result.vehicle.colour}).map(([label,value])=><div key={label} style={{marginBottom:10}}><dt><strong>{label}</strong></dt><dd style={{marginLeft:0}}>{value??"Not available"}</dd></div>)}</dl><h2>ECU &amp; tuning information</h2><p>ECU: Not verified</p><p>Stage 1 power / torque: Not verified</p><p>EGR / DPF / AdBlue: Not verified</p><p>{result.tuning.note}</p></section>}</section></main>;
 }
