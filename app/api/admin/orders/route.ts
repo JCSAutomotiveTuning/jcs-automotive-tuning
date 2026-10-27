@@ -192,7 +192,7 @@ export async function PATCH(req: Request) {
     const { data: existing, error: lookupError } = await admin
       .from("orders")
       .select(
-        "id,service_code,amount_pence,currency,status,payment_status,admin_notes"
+        "id,service_code,amount_pence,currency,status,payment_status,admin_notes,customer_notes"
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -241,7 +241,7 @@ export async function PATCH(req: Request) {
     // Fail closed before charging for tuning work that cannot be safely processed.
     if (action === "request_payment" || (action === "update" && status === "awaiting_payment")) {
       const { data: inputFiles, error: fileCheckError } = await admin.from("order_files")
-        .select("scan_status").eq("order_id", orderId).eq("kind", "customer_original").limit(500);
+        .select("scan_status,original_filename").eq("order_id", orderId).eq("kind", "customer_original").limit(500);
       if (fileCheckError || !inputFiles) {
         return NextResponse.json({ error: "Could not verify the uploaded files before payment." }, { status: 503 });
       }
@@ -250,6 +250,11 @@ export async function PATCH(req: Request) {
       ]);
       if (uploadRequired.has(existing.service_code) && inputFiles.length === 0) {
         return NextResponse.json({ error: "This service requires the customer's original file or datalog before payment." }, { status: 409 });
+      }
+      const needsDatalog = existing.service_code === "datalog_analysis" ||
+        (existing.customer_notes ?? "").includes("[diagnostics:datalog_analysis]");
+      if (needsDatalog && !inputFiles.some(file => /\.(csv|log|txt)$/i.test(file.original_filename ?? ""))) {
+        return NextResponse.json({ error: "The customer must attach a CSV, LOG or TXT datalog before payment." }, { status: 409 });
       }
       if (inputFiles.some(file => file.scan_status !== "clean")) {
         return NextResponse.json({ error: "Wait for antivirus clearance of uploaded files before requesting payment." }, { status: 409 });
