@@ -40,6 +40,11 @@ export async function POST(req: Request) {
   }
 
   const v = parsed.data;
+  // Reject path tricks, control characters and misleading executable suffix chains.
+  if (/[\\/\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/.test(v.fileName) ||
+      /\.(exe|dll|js|bat|cmd|ps1|vbs|scr|msi|com)\./i.test(v.fileName)) {
+    return NextResponse.json({ error: "Unsafe filename." }, { status: 400 });
+  }
   const ext = v.fileName.split(".").pop()?.toLowerCase() || "";
 
   if (!allowed.has(ext)) {
@@ -121,6 +126,16 @@ export async function POST(req: Request) {
       );
     }
   }
+
+  // Coarse per-account upload-signing throttle; fail closed if audit storage is unavailable.
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { count, error: limitError } = await admin.from("upload_security_events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id).gte("created_at", since);
+  if (limitError) return NextResponse.json({ error: "Upload security check unavailable." }, { status: 503 });
+  if ((count ?? 0) >= 12) return NextResponse.json({ error: "Upload rate limit reached. Try again in 10 minutes." }, { status: 429 });
+  const { error: eventError } = await admin.from("upload_security_events").insert({ user_id: user.id, order_id: v.orderId });
+  if (eventError) return NextResponse.json({ error: "Unable to record upload attempt." }, { status: 503 });
 
   const path = `${user.id}/${v.orderId}/${crypto.randomUUID()}-${v.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
