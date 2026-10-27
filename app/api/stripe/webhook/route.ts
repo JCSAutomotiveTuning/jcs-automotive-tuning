@@ -191,8 +191,9 @@ const handledCheckoutEvents = new Set<string>([
   }
 
   const userId = session.metadata?.user_id;
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  if (!userId || session.client_reference_id !== userId) {
+  if (!userId || !uuid.test(userId) || session.client_reference_id !== userId) {
     return NextResponse.json(
       { error: "Invalid customer reference." },
       { status: 400 }
