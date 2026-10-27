@@ -67,6 +67,44 @@ async function api(method, body) {
   return json;
 }
 
+
+const CLAM_OPTIONS = [
+  "--stdout", "--alert-encrypted=yes", "--alert-exceeds-max=yes",
+  "--max-filesize=17M", "--max-scansize=128M",
+];
+// Do not expose the admin password or other application secrets to ClamAV.
+const engineEnv = Object.fromEntries([
+  "PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "HOME", "USERPROFILE",
+  "APPDATA", "LOCALAPPDATA", "ProgramData", "LD_LIBRARY_PATH",
+].filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]));
+
+function scanLocal(path) {
+  const result = spawnSync(clamscan, [...CLAM_OPTIONS, path], {
+    encoding: "utf8", windowsHide: true, timeout: 180000,
+    maxBuffer: 1024 * 1024, env: engineEnv,
+  });
+  const summary = [result.stdout || "", result.stderr || ""].join("\n");
+  const signatures = Number(summary.match(/Known viruses:\s*(\d+)/i)?.[1] || 0);
+  if (result.error || signatures < 1 || !/Scanned files:\s*[1-9]/i.test(summary)) return "error";
+  if (result.status === 0 && /Infected files:\s*0/i.test(summary)) return "clean";
+  if (result.status === 1 && /Infected files:\s*[1-9]/i.test(summary)) return "blocked";
+  return "error";
+}
+
+async function selfTest() {
+  const temporary = join(tmpdir(), "jcs-clamav-eicar-" + randomUUID());
+  const marker = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+  await writeFile(temporary, Buffer.from(marker, "ascii"), { flag: "wx", mode: 0o600 });
+  try {
+    if (scanLocal(temporary) !== "blocked") {
+      throw new Error("ClamAV EICAR self-test failed. Scanner will not process customer files.");
+    }
+  } finally {
+    await unlink(temporary).catch(() => {});
+  }
+  console.log("PASS: ClamAV EICAR self-test");
+}
+
 async function scanFile(file, signedUrl) {
   const name = join(tmpdir(), "jcs-clamav-" + randomUUID() + ".scan");
   try {
@@ -78,20 +116,7 @@ async function scanFile(file, signedUrl) {
     }
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     await writeFile(name, bytes, { flag: "wx", mode: 0o600 });
-    const result = spawnSync(clamscan, ["--stdout", name], {
-      encoding: "utf8",
-      windowsHide: true,
-      timeout: 180000,
-      maxBuffer: 1024 * 1024,
-    });
-    const summary = [result.stdout || "", result.stderr || ""].join("\n");
-    const signatures = Number(summary.match(/Known viruses:\s*(\d+)/i)?.[1] || 0);
-    let verdict = "error";
-    if (!result.error && signatures > 0 && result.status === 0 && /Scanned files:\s*[1-9]/i.test(summary)) {
-      verdict = "clean";
-    } else if (!result.error && signatures > 0 && result.status === 1 && /Infected files:\s*[1-9]/i.test(summary)) {
-      verdict = "blocked";
-    }
+    const verdict = scanLocal(name);
     // Scanner errors or missing signature databases NEVER result in a clean verdict.
     await api("POST", { fileId: file.id, kind: file.kind, verdict, sha256 });
     console.log(new Date().toISOString(), file.kind, file.id.slice(0, 8), verdict);
@@ -101,6 +126,7 @@ async function scanFile(file, signedUrl) {
 }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
+await selfTest();
 console.log("JCS authenticated ClamAV worker starting; updates require an active production admin session.");
 while (true) {
   try {
