@@ -62,6 +62,17 @@ async function fetchIdentity() {
   if (!response.ok) throw new Error(`GitHub identity request failed: ${response.status}`);
   const data = await response.json();
   if (!data.value || typeof data.value !== "string") throw new Error("No GitHub identity token");
+  // Print only boolean diagnostics; never log bearer tokens or customer identifiers.
+  const claims = JSON.parse(Buffer.from(data.value.split(".")[1], "base64url").toString("utf8"));
+  console.log("OIDC identity claims:", JSON.stringify({
+    issuerMatches: claims.iss === "https://token.actions.githubusercontent.com",
+    audienceMatches: claims.aud === AUDIENCE,
+    repositoryMatches: claims.repository === "JCSAutomotiveTuning/jcs-automotive-tuning",
+    refMatches: claims.ref === "refs/heads/main",
+    workflowMatches: claims.workflow_ref === "JCSAutomotiveTuning/jcs-automotive-tuning/.github/workflows/malware-scan.yml@refs/heads/main",
+    subjectMatches: claims.sub === "repo:JCSAutomotiveTuning/jcs-automotive-tuning:ref:refs/heads/main",
+    eventAccepted: ["schedule", "workflow_dispatch", "push"].includes(claims.event_name),
+  }));
   return data.value;
 }
 
@@ -74,7 +85,8 @@ async function callApi(token, body) {
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new Error(`Scanner API ${String(body.action)} failed (HTTP ${response.status})`);
+    const detail = await response.json().catch(() => null);
+    throw new Error(`Scanner API ${String(body.action)} failed (HTTP ${response.status}): ${typeof detail?.error === "string" ? detail.error : "unavailable"}`);
   }
   return response.json();
 }
