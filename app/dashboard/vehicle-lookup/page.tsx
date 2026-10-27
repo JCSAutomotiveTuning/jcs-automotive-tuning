@@ -2,9 +2,54 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 
+type RecordData = Record<string, unknown>;
+const asRecord = (value: unknown): RecordData => value && typeof value === "object" && !Array.isArray(value) ? value as RecordData : {};
+const display = (value: unknown): string => value == null ? "Not listed" : typeof value === "object" ? JSON.stringify(value) : String(value);
+const list = (value: unknown): RecordData[] => {
+  const record = asRecord(value);
+  const inner = record.data ?? record.results ?? record.items ?? value;
+  return Array.isArray(inner) ? inner.map(asRecord) : [];
+};
+const identifier = (item: RecordData) => String(item.public_id ?? item.id ?? "");
+const label = (item: RecordData) => String(item.name ?? item.title ?? item.label ?? item.engine ?? item.description ?? identifier(item));
 type Vehicle = { registrationNumber?:string; make?:string; yearOfManufacture?:number; engineCapacity?:number; fuelType?:string; euroStatus?:string; colour?:string };
 type Lookup = { vehicle:Vehicle; tuning:{ note:string } };
 export default function VehicleLookup() {
+  const steps = ["makes","models","generations","engines"] as const;
+  const [options,setOptions]=useState<RecordData[][]>([[],[],[],[]]);
+  const [selected,setSelected]=useState(["","","",""]);
+  const [ecuResult,setEcuResult]=useState<RecordData|null>(null);
+  const [ecuError,setEcuError]=useState("");
+  const [ecuBusy,setEcuBusy]=useState(false);
+  async function loadStep(index:number, id?:string) {
+    setEcuBusy(true);setEcuError("");setEcuResult(null);
+    try {
+      const params=new URLSearchParams({step:steps[index]});
+      if(index>0) params.set(["","make","model","generation"][index],id??"");
+      const response=await fetch("/api/ecu-catalogue?"+params.toString(),{cache:"no-store"});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||"Catalogue lookup failed");
+      const next=[...options];next[index]=list(data);
+      for(let i=index+1;i<4;i++)next[i]=[];
+      setOptions(next);
+    }catch(e){setEcuError(e instanceof Error?e.message:"Catalogue lookup failed");}
+    finally{setEcuBusy(false);}
+  }
+  async function selectStep(index:number,id:string){
+    const next=[...selected];next[index]=id;
+    for(let i=index+1;i<4;i++)next[i]="";
+    setSelected(next);setEcuResult(null);
+    if(!id)return;
+    if(index<3){await loadStep(index+1,id);return;}
+    setEcuBusy(true);setEcuError("");
+    try {
+      const response=await fetch("/api/ecu-catalogue?"+new URLSearchParams({step:"vehicle",engine:id}),{cache:"no-store"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Vehicle lookup failed");
+      setEcuResult(asRecord(asRecord(data).data ?? data));
+    }catch(e){setEcuError(e instanceof Error?e.message:"Vehicle lookup failed");}
+    finally{setEcuBusy(false);}
+  }
   const [registration,setRegistration]=useState("");
   const [result,setResult]=useState<Lookup|null>(null);
   const [error,setError]=useState("");
@@ -19,5 +64,9 @@ export default function VehicleLookup() {
     } catch(e) {setError(e instanceof Error?e.message:"Vehicle lookup failed");}
     finally {setBusy(false);}
   }
-  return <main className="wrap"><nav className="nav"><Link className="brand" href="/">JCS <span>AUTOMOTIVE TUNING</span></Link><Link href="/dashboard">Back to dashboard</Link></nav><section className="card" style={{maxWidth:700,margin:"45px auto"}}><div className="eyebrow">Vehicle information</div><h1>Registration lookup</h1><p>Look up verified UK vehicle details. ECU identification and Stage 1 figures require a matched tuning record.</p><form onSubmit={search}><div className="field"><label htmlFor="registration">UK registration</label><input id="registration" name="registration" value={registration} onChange={e=>setRegistration(e.target.value.toUpperCase())} maxLength={10} placeholder="AB12 CDE" required/></div><button className="btn" disabled={busy}>{busy?"Searching…":"Search vehicle"}</button></form>{error&&<p role="alert">{error}</p>}{result&&<section aria-live="polite"><h2>Vehicle details</h2><dl>{Object.entries({"Registration":result.vehicle.registrationNumber,"Make":result.vehicle.make,"Year":result.vehicle.yearOfManufacture,"Engine capacity (cc)":result.vehicle.engineCapacity,"Fuel":result.vehicle.fuelType,"Euro classification":result.vehicle.euroStatus,"Colour":result.vehicle.colour}).map(([label,value])=><div key={label} style={{marginBottom:10}}><dt><strong>{label}</strong></dt><dd style={{marginLeft:0}}>{value??"Not available"}</dd></div>)}</dl><h2>ECU &amp; tuning information</h2><p>ECU: Not verified</p><p>Stage 1 power / torque: Not verified</p><p>EGR / DPF / AdBlue: Not verified</p><p>{result.tuning.note}</p></section>}</section></main>;
+  return <main className="wrap"><nav className="nav"><Link className="brand" href="/">JCS <span>AUTOMOTIVE TUNING</span></Link><Link href="/dashboard">Back to dashboard</Link></nav><section className="card" style={{maxWidth:700,margin:"45px auto"}}><div className="eyebrow">Vehicle information</div><h1>Vehicle &amp; ECU lookup</h1><p>Look up verified UK vehicle details. ECU identification and Stage 1 figures require a matched tuning record.</p><h2>Find your ECU by vehicle</h2><p>Select the exact make, model, generation and engine. ECU fitment is catalogue information and must be confirmed against the vehicle.</p><button className="btn" type="button" onClick={()=>loadStep(0)} disabled={ecuBusy}>{ecuBusy?"Loading…":"Browse vehicle catalogue"}</button>
+  {steps.map((step,index)=>options[index].length>0&&<div className="field" key={step}><label htmlFor={step}>{["Make","Model","Generation","Engine"][index]}</label><select id={step} value={selected[index]} onChange={e=>selectStep(index,e.target.value)}><option value="">Select {step}</option>{options[index].map((item,i)=><option key={identifier(item)||i} value={identifier(item)}>{label(item)}</option>)}</select></div>)}
+  {ecuError&&<p role="alert">{ecuError}</p>}
+  {ecuResult&&<section aria-live="polite"><h2>ECU catalogue result</h2><p>Reference data only. Check ECU hardware/software ID before ordering a file.</p><dl>{Object.entries(ecuResult).filter(([key])=>!["photo","logo","logo_url"].includes(key)).map(([key,value])=><div key={key} style={{marginBottom:10}}><dt><strong>{key.replaceAll("_"," ")}</strong></dt><dd style={{marginLeft:0,overflowWrap:"anywhere"}}>{display(value)}</dd></div>)}</dl></section>}
+  <h2>UK registration search</h2><form onSubmit={search}><div className="field"><label htmlFor="registration">UK registration</label><input id="registration" name="registration" value={registration} onChange={e=>setRegistration(e.target.value.toUpperCase())} maxLength={10} placeholder="AB12 CDE" required/></div><button className="btn" disabled={busy}>{busy?"Searching…":"Search vehicle"}</button></form>{error&&<p role="alert">{error}</p>}{result&&<section aria-live="polite"><h2>Vehicle details</h2><dl>{Object.entries({"Registration":result.vehicle.registrationNumber,"Make":result.vehicle.make,"Year":result.vehicle.yearOfManufacture,"Engine capacity (cc)":result.vehicle.engineCapacity,"Fuel":result.vehicle.fuelType,"Euro classification":result.vehicle.euroStatus,"Colour":result.vehicle.colour}).map(([label,value])=><div key={label} style={{marginBottom:10}}><dt><strong>{label}</strong></dt><dd style={{marginLeft:0}}>{value??"Not available"}</dd></div>)}</dl><h2>ECU &amp; tuning information</h2><p>ECU: Not verified</p><p>Stage 1 power / torque: Not verified</p><p>EGR / DPF / AdBlue: Not verified</p><p>{result.tuning.note}</p></section>}</section></main>;
 }
