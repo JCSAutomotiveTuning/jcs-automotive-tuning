@@ -31,15 +31,23 @@ async function verifyGithubJob(request: Request): Promise<boolean> {
     const claims = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
     if (header.alg !== "RS256" || typeof header.kid !== "string" || header.kid.length > 200) return false;
     const now = Math.floor(Date.now() / 1000);
-    if (claims.iss !== ISSUER || claims.aud !== AUDIENCE ||
-        claims.repository !== REPOSITORY || claims.ref !== ref ||
-        claims.workflow_ref !== WORKFLOW_REF ||
-        claims.sub !== `repo:${REPOSITORY}:ref:${ref}` ||
-        !["schedule", "workflow_dispatch", "push"].includes(claims.event_name) ||
-        !Number.isInteger(claims.iat) || !Number.isInteger(claims.exp) ||
-        claims.iat > now + 30 || claims.iat < now - 600 ||
-        claims.exp <= now || claims.exp > now + 630 ||
-        (typeof claims.nbf === "number" && claims.nbf > now + 30)) return false;
+    const checks: Record<string, boolean> = {
+      issuer: claims.iss === ISSUER,
+      audience: claims.aud === AUDIENCE,
+      repository: claims.repository === REPOSITORY,
+      ref: claims.ref === ref,
+      workflow: claims.workflow_ref === WORKFLOW_REF,
+      subject: claims.sub === `repo:${REPOSITORY}:ref:${ref}`,
+      event: ["schedule", "workflow_dispatch", "push"].includes(claims.event_name),
+      issuedAt: Number.isInteger(claims.iat) && claims.iat <= now + 30 && claims.iat >= now - 600,
+      expiresAt: Number.isInteger(claims.exp) && claims.exp > now && claims.exp <= now + 630,
+      notBefore: typeof claims.nbf !== "number" || claims.nbf <= now + 30,
+    };
+    const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
+    if (failed.length) {
+      console.warn("Scanner identity claims rejected (fields only):", failed.join(","));
+      return false;
+    }
 
     // Do not trust unsigned JWT data. Only keys published by GitHub's issuer are accepted.
     const response = await fetch("https://token.actions.githubusercontent.com/.well-known/jwks", {
@@ -52,17 +60,20 @@ async function verifyGithubJob(request: Request): Promise<boolean> {
       candidate.kid === header.kid && candidate.kty === "RSA" &&
       (!candidate.alg || candidate.alg === "RS256")
     );
-    if (!key) return false;
+    if (!key) { console.warn("Scanner identity key not found."); return false; }
     const publicKey = await webcrypto.subtle.importKey(
       "jwk", key, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
       false, ["verify"]
     );
-    return await webcrypto.subtle.verify(
+    const verified = await webcrypto.subtle.verify(
       "RSASSA-PKCS1-v1_5", publicKey,
       Buffer.from(parts[2], "base64url"),
       new TextEncoder().encode(parts[0] + "." + parts[1])
     );
-  } catch {
+    if (!verified) console.warn("Scanner identity signature failed.");
+    return verified;
+  } catch (error) {
+    console.warn("Scanner identity verification exception:", error instanceof Error ? error.name : "unknown");
     return false;
   }
 }
