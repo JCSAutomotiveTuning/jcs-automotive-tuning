@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
     const admin = createAdminClient();
     const { data: order, error: orderError } = await admin.from("orders")
-      .select("id,user_id,service_code,service_name,amount_pence,currency,status,payment_status,checkout_session_id,checkout_attempt_id")
+      .select("id,user_id,service_code,service_name,amount_pence,currency,status,payment_status,checkout_session_id,checkout_attempt_id,customer_notes")
       .eq("id", orderId).eq("user_id", user.id).maybeSingle();
     if (orderError) {
       console.error("Order checkout lookup failed:", orderError.message);
@@ -56,17 +56,22 @@ export async function POST(req: Request) {
     // Do not take payment for a tuning file which cannot yet be safely inspected.
     // A customer cannot add files once an order leaves awaiting_review.
     const { data: inputFiles, error: inputError } = await admin.from("order_files")
-      .select("id,scan_status").eq("order_id", order.id)
+      .select("id,scan_status,original_filename").eq("order_id", order.id)
       .eq("kind", "customer_original").limit(500);
     if (inputError || !inputFiles) {
       console.error("Order file safety preflight failed:", inputError?.message);
       return NextResponse.json({ error: "Cannot verify the safety of this order's files." }, { status: 503 });
     }
     const uploadRequired = new Set([
-      "ecu_stage1", "dsg_tcu", "log_review", "custom_ecu", "custom_tcu", "ecu_tcu_package",
+      "ecu_stage1", "dsg_tcu", "log_review", "datalog_analysis", "custom_ecu", "custom_tcu", "ecu_tcu_package",
     ]);
     if (uploadRequired.has(order.service_code) && inputFiles.length === 0) {
-      return NextResponse.json({ error: "Please upload the original tuning file before payment is requested." }, { status: 409 });
+      return NextResponse.json({ error: "Please upload the required original file or datalog before payment is requested." }, { status: 409 });
+    }
+    const needsDatalog = order.service_code === "datalog_analysis" ||
+      (order.customer_notes ?? "").includes("[diagnostics:datalog_analysis]");
+    if (needsDatalog && !inputFiles.some(file => /\.(csv|log|txt)$/i.test(file.original_filename ?? ""))) {
+      return NextResponse.json({ error: "Attach a CSV, LOG or TXT datalog before payment is requested." }, { status: 409 });
     }
     if (inputFiles.some(file => file.scan_status !== "clean")) {
       return NextResponse.json({ error: "The uploaded file is still awaiting antivirus clearance. No payment was taken." }, { status: 409 });

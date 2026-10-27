@@ -84,7 +84,9 @@ function formatPrice(amountPence: number, currency: string) {
   }).format(amountPence / 100);
 }
 
-export default async function Dashboard() {
+export default async function Dashboard({ searchParams }: { searchParams: Promise<{ service?: string }> }) {
+  const requestedService = (await searchParams).service;
+  const initialService = requestedService === "datalog_analysis" ? "datalog_analysis" : "ecu_stage1";
   const supabase = await createClient();
 
   const {
@@ -176,7 +178,7 @@ export default async function Dashboard() {
       <div className="two">
         <section id="upload-tuning-file" className="card" style={{ scrollMarginTop: 24 }}>
           <h2>Submit a job</h2>
-          <NewOrder />
+          <NewOrder initialService={initialService} />
         </section>
 
         <section id="order-history" className="card" style={{scrollMarginTop:24}}>
