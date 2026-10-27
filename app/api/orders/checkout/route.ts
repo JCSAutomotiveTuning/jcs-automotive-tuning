@@ -23,8 +23,9 @@ export async function POST(req: Request) {
     }
 
     const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey) {
-      return NextResponse.json({ error: "Payments are not configured yet." }, { status: 503 });
+    if (!secretKey || !/^sk_(test|live)_/.test(secretKey)) {
+      console.error("Stripe server secret key is missing or has an invalid prefix.");
+      return NextResponse.json({ error: "Payments are not configured correctly." }, { status: 503 });
     }
 
     const admin = createAdminClient();
