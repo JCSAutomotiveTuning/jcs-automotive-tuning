@@ -95,7 +95,7 @@ export default async function AdminDashboard() {
 
   const admin = createAdminClient();
 
-  const [customers, openOrders, completedOrders, wallets] =
+  const [customers, openOrders, completedOrders, wallets, tickets, dealerApplications] =
     await Promise.all([
       admin
         .from("profiles")
@@ -110,13 +110,15 @@ export default async function AdminDashboard() {
         .select("id", { count: "exact", head: true })
         .eq("status", "completed"),
       admin.from("customer_wallets").select("balance_pence"),
+      admin.from("support_tickets").select("id", { count: "exact", head: true }).not("status", "in", '("closed","resolved")'),
+      admin.from("dealer_applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
     ]);
 
   const statsError =
     customers.error ||
     openOrders.error ||
     completedOrders.error ||
-    wallets.error;
+    wallets.error || tickets.error || dealerApplications.error;
 
   if (statsError) {
     throw new Error("Unable to load admin dashboard statistics.");
@@ -128,6 +130,8 @@ export default async function AdminDashboard() {
   );
 
   const cards = [
+    {label:"Open support tickets",value:String(tickets.count??0),detail:"Tickets requiring attention",icon:"✉",accent:"border-t-sky-400",iconStyle:"bg-sky-400/10 text-sky-300"},
+    {label:"Dealer applications",value:String(dealerApplications.count??0),detail:"Pending trade requests",icon:"♙",accent:"border-t-amber-400",iconStyle:"bg-amber-400/10 text-amber-300"},
     {
       label: "Total customers",
       value: String(customers.count ?? 0),
