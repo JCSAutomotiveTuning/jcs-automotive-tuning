@@ -191,7 +191,7 @@ export default async function AdminDashboard() {
       <div className="min-h-screen md:flex">
 
         {/* Sidebar */}
-        <aside className="border-b border-white/[0.08] bg-[#0d121b] md:sticky md:top-0 md:flex md:h-screen md:w-[260px] md:shrink-0 md:flex-col md:border-b-0 md:border-r">
+        <aside className="border-b border-white/[0.08] bg-[#0d121b] md:sticky md:top-0 md:flex md:h-screen md:max-h-screen md:overflow-y-auto md:overscroll-contain md:w-[260px] md:shrink-0 md:flex-col md:border-b-0 md:border-r">
           <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-5 md:px-6 md:py-7">
             <Link href="/" aria-label="JCS Automotive Tuning homepage">
   <Image src="/jcs-automotive-logo.webp" alt="JCS Automotive Tuning logo" width={64} height={64} className="h-16 w-16 shrink-0 rounded-xl object-contain" />
