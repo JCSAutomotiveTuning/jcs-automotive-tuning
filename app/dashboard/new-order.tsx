@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { ADDONS, ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE, type AddonGroup } from "@/lib/tuning-addons";
 
 const SERVICE_OPTIONS = [
+  ["addons_only", "Add-ons only — pay for selected features"],
   ["ecu_stage1", "ECU Stage 1 file service - GBP 55"],
   ["dsg_tcu", "DSG / TCU calibration review - GBP 70"],
   ["log_review", "ECU / TCU file check & review - GBP 20"],
@@ -32,14 +33,14 @@ export default function NewOrder() {
   const tcuService = service === "dsg_tcu" || service === "custom_tcu";
   const reviewOnly = service === "log_review" || service === "emissions_diagnostics";
   const showEcu = !tcuService && !reviewOnly;
-  const showTcu = tcuService || service === "ecu_tcu_package";
+  const showTcu = tcuService || service === "ecu_tcu_package" || service === "addons_only";
   const visibleGroups: AddonGroup[] = [
     ...(showEcu ? [fuel] : []),
     ...(showTcu ? ["tcu" as const] : []),
   ];
   const visibleAddons = addons.filter(a => visibleGroups.some(g => a.startsWith(`${g}:`)));
   const basePrices: Record<string,number> = {
-    ecu_stage1:5500,dsg_tcu:7000,log_review:2000,
+    addons_only:0,ecu_stage1:5500,dsg_tcu:7000,log_review:2000,
     emissions_diagnostics:3000,custom_ecu:19500,custom_tcu:19500,ecu_tcu_package:0,
   };
   const dtcCodes = dtcReview ? parseDtcCodes(dtcInput) : [];
@@ -56,6 +57,11 @@ export default function NewOrder() {
     e.preventDefault();
     if (busy) return;
     setMessage("");
+
+    if (!retryOrderId && service === "addons_only" && visibleAddons.length === 0 && !dtcReview) {
+      setMessage("Select at least one add-on or DTC review for an add-ons-only order.");
+      return;
+    }
 
     if (!retryOrderId && dtcReview && !dtcCodes) {
       setMessage("Enter 1-10 valid P or U fault codes.");
@@ -203,6 +209,7 @@ export default function NewOrder() {
     </section>
     {(showEcu || showTcu) && <section>
       <h3>3. Requested add-ons</h3>
+      {service === "addons_only" && <p className="notice">Select only the ECU and/or TCU features you need. No Stage 1 or other base tuning service is charged. Final suitability and pricing are reviewed before work begins.</p>}
       {showEcu && <div className="field">
         <label htmlFor="fuelType">Engine fuel type</label>
         <select id="fuelType" value={fuel} onChange={e=>setFuel(e.target.value as "petrol"|"diesel")}>
