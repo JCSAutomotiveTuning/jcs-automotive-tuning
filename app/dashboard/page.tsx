@@ -170,6 +170,42 @@ export default async function Dashboard() {
         </p>
       </section>
 
+      <section className="card" aria-labelledby="portal-updates-heading" style={{ margin: "20px 0" }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <h2 id="portal-updates-heading">Portal notifications</h2>
+          <span className="pill">Updated when you open this page</span>
+        </div>
+        <p className="order-detail">Order and payment updates appear here in your account. Email notifications are not required.</p>
+        {!orders?.length ? (
+          <p>No order updates yet. New orders and their progress will appear here.</p>
+        ) : (
+          <div className="stack" role="list" aria-label="Recent order notifications">
+            {orders.slice(0, 8).map((order) => {
+              const status = orderStatus[order.status] ?? {
+                label: "Order updated",
+                detail: "Check your order details for the latest status.",
+                stage: -1,
+              };
+              const paymentMessage = order.payment_status === "paid"
+                ? "Payment confirmed."
+                : order.status === "awaiting_payment"
+                  ? "Payment required before work can begin."
+                  : "";
+              return (
+                <article key={order.id} role="listitem" className="order-entry">
+                  <div className="row" style={{ justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <strong>{status.label}: {order.service_name || order.service_code.replaceAll("_", " ")}</strong>
+                    <span>{new Date(order.created_at).toLocaleDateString("en-GB")}</span>
+                  </div>
+                  <p className="order-detail">{status.detail} {paymentMessage}</p>
+                  <span className="order-meta">Order #{order.id.slice(0, 8)}</span>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
       <div style={{ margin: "20px 0" }}>
   <a
     href="#upload-tuning-file"
