@@ -41,7 +41,7 @@ const statusOptions = [
 ];
 
 const closed = new Set(["completed", "cancelled", "failed"]);
-const quoteServices = new Set(["custom_ecu", "custom_tcu", "ecu_tcu_package"]);
+const quoteServices = new Set(["custom_ecu", "custom_tcu", "ecu_tcu_package", "addons_only"]);
 const requiresPayment = new Set(["in_progress", "qa_review", "completed"]);
 
 function label(value: string): string {
