@@ -37,7 +37,7 @@ async function verifyGithubJob(request: Request): Promise<boolean> {
       repository: claims.repository === REPOSITORY,
       ref: claims.ref === ref,
       workflow: claims.workflow_ref === WORKFLOW_REF,
-      subject: claims.sub === `repo:${REPOSITORY}:ref:${ref}`,
+      subject: typeof claims.sub === "string" && claims.sub.startsWith(`repo:${REPOSITORY}:`),
       event: ["schedule", "workflow_dispatch", "push"].includes(claims.event_name),
       issuedAt: Number.isInteger(claims.iat) && claims.iat <= now + 30 && claims.iat >= now - 600,
       expiresAt: Number.isInteger(claims.exp) && claims.exp > now && claims.exp <= now + 630,
