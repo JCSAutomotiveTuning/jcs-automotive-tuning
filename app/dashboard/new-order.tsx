@@ -234,7 +234,7 @@ export default function NewOrder() {
           <small>{dtcCodes ? `${dtcCodes.length} unique code(s) - ${pounds(dtcTotal)} total` : "Enter valid five-character P or U codes."} Review does not guarantee removal; safety and legal compliance apply.</small>
         </div>}
       </fieldset>
-      <p style={{fontSize:13,opacity:.8}}>Add-ons are requests, not guaranteed features. Availability, safety and legal road-use compliance are reviewed before work begins.</p>
+      <p style={{fontSize:13,opacity:.8}}>Original (ORI/stock) file sourcing is £25 per requested controller, subject to an exact compatible hardware/software match and availability. JCS will confirm suitability before supply. Add-ons are requests, not guaranteed features. Availability, safety and legal road-use compliance are reviewed before work begins.</p>
     </section>}
     <section>
       <h3>4. Job notes and original file</h3>
