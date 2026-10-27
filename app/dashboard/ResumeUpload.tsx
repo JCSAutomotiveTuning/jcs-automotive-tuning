@@ -74,7 +74,7 @@ export default function ResumeUpload({
         throw new Error("File transfer failed.");
       }
 
-      setMessage("Confirming file and wallet payment...");
+      setMessage("Confirming file registration (no extra fee)...");
 
       const complete = await fetch("/api/uploads/complete", {
         method: "POST",
