@@ -183,7 +183,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Insufficient wallet balance for this order. Please top up your wallet to cover the order price.",
+            "Insufficient wallet balance for the £20 file submission fee. Please top up your wallet.",
         },
         { status: 402 }
       );
