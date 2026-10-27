@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +10,7 @@ export default async function DatalogAnalysisPage() {
   if (!user) redirect("/login");
 
   const { data: orders } = await supabase.from("orders")
-    .select("id,vehicle_make,vehicle_model,status,payment_status,created_at,admin_notes,customer_notes,order_files(id,original_filename,scan_status)")
+    .select("id,vehicle_make,vehicle_model,status,payment_status,created_at,order_files(id,original_filename,scan_status)")
     .eq("user_id", user.id).eq("service_code", "log_review")
     .order("created_at", { ascending: false }).limit(30);
 
@@ -47,8 +46,7 @@ export default async function DatalogAnalysisPage() {
           <div className="row"><strong>{order.vehicle_make} {order.vehicle_model}</strong><span className="order-badge">{order.status.replaceAll("_"," ")}</span></div>
           <p>Order #{order.id.slice(0,8)} · {new Date(order.created_at).toLocaleDateString("en-GB")} · Payment: {order.payment_status}</p>
           <p>Uploaded files: {order.order_files?.length ?? 0}</p>
-          {order.admin_notes && <div className="notice"><strong>JCS technician review / comments</strong><p style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{order.admin_notes}</p></div>}
-          {!order.admin_notes && <p>Technician feedback will appear here once your review has been completed.</p>}
+          <p>For the written technician review, use your order updates and Support Centre. Internal workshop notes are not published to customers.</p>
         </article>)}</div>}
     </section>
   </main>;
