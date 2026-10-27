@@ -238,6 +238,24 @@ export async function PATCH(req: Request) {
       }
     }
 
+    // Fail closed before charging for tuning work that cannot be safely processed.
+    if (action === "request_payment" || (action === "update" && status === "awaiting_payment")) {
+      const { data: inputFiles, error: fileCheckError } = await admin.from("order_files")
+        .select("scan_status").eq("order_id", orderId).eq("kind", "customer_original").limit(500);
+      if (fileCheckError || !inputFiles) {
+        return NextResponse.json({ error: "Could not verify the uploaded files before payment." }, { status: 503 });
+      }
+      const uploadRequired = new Set([
+        "ecu_stage1", "dsg_tcu", "log_review", "custom_ecu", "custom_tcu", "ecu_tcu_package",
+      ]);
+      if (uploadRequired.has(existing.service_code) && inputFiles.length === 0) {
+        return NextResponse.json({ error: "This tuning service requires the customer's original file before payment." }, { status: 409 });
+      }
+      if (inputFiles.some(file => file.scan_status !== "clean")) {
+        return NextResponse.json({ error: "Wait for antivirus clearance of uploaded files before requesting payment." }, { status: 409 });
+      }
+    }
+
     if (action === "save_quote") {
       if (!quoteableServices.includes(existing.service_code) && existing.amount_pence !== 0) {
         return NextResponse.json(
@@ -338,7 +356,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json(
           {
             error:
-              "Save a quote greater than Ã‚£0 before requesting payment.",
+              "Save a quote greater than £0 before requesting payment.",
           },
           { status: 400 }
         );
@@ -411,7 +429,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json(
           {
             error:
-              "An order must have a price greater than Ã‚£0 before payment can be requested.",
+              "An order must have a price greater than £0 before payment can be requested.",
           },
           { status: 400 }
         );
