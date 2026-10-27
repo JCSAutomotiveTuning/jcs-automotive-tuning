@@ -77,54 +77,13 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
 
-  const { data: wallet, error: walletError } = await admin
-    .from("customer_wallets")
-    .select("balance_pence")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const { data: previousCharge, error: chargeError } = await admin
-    .from("wallet_transactions")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("order_id", v.orderId)
-    .eq("transaction_type", "submission")
-    .maybeSingle();
-
-  if (walletError || chargeError) {
-    console.error("Wallet pre-check failed:", walletError || chargeError);
+  // File submission is included in the order's service price.
+  // Do not charge or require wallet credit for an upload.
+  if (order.payment_status !== "unpaid" && order.payment_status !== "paid") {
     return NextResponse.json(
-      { error: "Could not verify your wallet. Please try again." },
-      { status: 500 }
+      { error: "This order's payment requires review before upload." },
+      { status: 409 }
     );
-  }
-
-  if (!previousCharge) {
-    if (order.payment_status !== "unpaid") {
-      return NextResponse.json(
-        { error: "This order is already paid or has a payment in progress." },
-        { status: 409 }
-      );
-    }
-
-    if (!Number.isSafeInteger(order.amount_pence) || order.amount_pence <= 0) {
-      return NextResponse.json(
-        { error: "This order requires price confirmation before upload." },
-        { status: 409 }
-      );
-    }
-
-    if (!wallet || wallet.balance_pence < 2000) {
-      const required = (2000 / 100).toFixed(2);
-      const available = ((wallet?.balance_pence ?? 0) / 100).toFixed(2);
-
-      return NextResponse.json(
-        {
-          error: `Insufficient wallet credit. File submission: GBP ${required}; available: GBP ${available}. Please top up first.`
-        },
-        { status: 402 }
-      );
-    }
   }
 
   // Coarse per-account upload-signing throttle; fail closed if audit storage is unavailable.
