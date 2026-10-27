@@ -65,12 +65,16 @@ export async function GET() {
   }
 
   const db = createAdminClient();
-  const [orderQueue, technicalQueue, inconsistentOrders] = await Promise.all([
+  const [orderQueue, technicalQueue, inconsistentOrders, orderScanErrors, technicalScanErrors, refundedOrders, disputedOrders] = await Promise.all([
     db.from("order_files").select("id", { head: true, count: "exact" }).eq("scan_status", "pending"),
     db.from("technical_request_files").select("id", { head: true, count: "exact" }).eq("scan_status", "pending"),
     db.from("orders").select("id", { head: true, count: "exact" }).eq("status", "paid").neq("payment_status", "paid"),
+    db.from("order_files").select("id", { head: true, count: "exact" }).eq("scan_status", "error"),
+    db.from("technical_request_files").select("id", { head: true, count: "exact" }).eq("scan_status", "error"),
+    db.from("orders").select("id", { head: true, count: "exact" }).eq("payment_status", "refunded"),
+    db.from("orders").select("id", { head: true, count: "exact" }).eq("payment_status", "disputed"),
   ]);
-  const databaseOk = !orderQueue.error && !technicalQueue.error && !inconsistentOrders.error;
+  const databaseOk = [orderQueue, technicalQueue, inconsistentOrders, orderScanErrors, technicalScanErrors, refundedOrders, disputedOrders].every(result => !result.error);
   const report = {
     generatedAt: new Date().toISOString(),
     environment: production ? "production" : "nonproduction",
@@ -80,6 +84,14 @@ export async function GET() {
       technicalFiles: technicalQueue.count ?? 0,
     } : null,
     workflowStatusMismatchCount: databaseOk ? inconsistentOrders.count ?? 0 : null,
+    scanErrorCounts: databaseOk ? {
+      tuningFiles: orderScanErrors.count ?? 0,
+      technicalFiles: technicalScanErrors.count ?? 0,
+    } : null,
+    orderPaymentExceptions: databaseOk ? {
+      refunded: refundedOrders.count ?? 0,
+      disputed: disputedOrders.count ?? 0,
+    } : null,
     notifications: {
       cronConfigured: Boolean(process.env.CRON_SECRET),
       emailProviderConfigured: Boolean(process.env.RESEND_API_KEY && process.env.NOTIFICATION_FROM_EMAIL),
@@ -91,6 +103,8 @@ export async function GET() {
       "Complete a test-mode order payment, signed webhook, status update and retry",
       "Confirm any historic status/financial mismatches before treating orders as paid",
       "Enable server-side leaked password protection in Supabase Auth settings",
+      "Verify refunds, disputes and failed asynchronous payments are reconciled before live launch",
+      "Verify staff MFA, backups, restore procedure and cross-customer access restrictions",
     ],
   };
   return NextResponse.json(report, {
