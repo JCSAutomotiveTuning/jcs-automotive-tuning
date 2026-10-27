@@ -109,13 +109,13 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!wallet || wallet.balance_pence < order.amount_pence) {
-      const required = (order.amount_pence / 100).toFixed(2);
+    if (!wallet || wallet.balance_pence < 2000) {
+      const required = (2000 / 100).toFixed(2);
       const available = ((wallet?.balance_pence ?? 0) / 100).toFixed(2);
 
       return NextResponse.json(
         {
-          error: `Insufficient wallet credit. Order: GBP ${required}; available: GBP ${available}. Please top up first.`
+          error: `Insufficient wallet credit. File submission: GBP ${required}; available: GBP ${available}. Please top up first.`
         },
         { status: 402 }
       );
