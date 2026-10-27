@@ -441,3 +441,14 @@ html,body{max-width:100%;overflow-x:clip}
  .pill{max-width:100%}
  .card{border-radius:12px}
 }
+
+/* Customer portal navigation: keep account controls separate from tool links */
+.jcs-dashboard-nav{align-items:center;gap:16px}
+.jcs-account-actions{display:flex;flex:1 1 350px;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;min-width:0}
+.jcs-account-actions form{margin:0}
+.jcs-account-email{max-width:min(100%,300px)}
+.jcs-tool-nav{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:14px 0 18px;border-bottom:1px solid var(--line)}
+.jcs-tool-nav a{display:inline-flex;align-items:center;min-height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:rgba(21,30,43,.75);color:var(--text);font-size:12px;font-weight:700;line-height:1.3;transition:border-color .15s,background .15s}
+.jcs-tool-nav a:hover,.jcs-tool-nav a:focus-visible{border-color:var(--blue);background:rgba(40,169,255,.1);color:var(--text)}
+@media(max-width:760px){.jcs-dashboard-nav{align-items:stretch}.jcs-account-actions{justify-content:flex-start;flex:0 1 auto}.jcs-tool-nav{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding-bottom:14px}.jcs-tool-nav a{flex:0 0 auto;white-space:nowrap}.jcs-account-email{max-width:100%}}
+@media(max-width:420px){.jcs-account-actions .pill{width:100%}.jcs-account-actions form{flex:1}.jcs-account-actions form button{width:100%}}
