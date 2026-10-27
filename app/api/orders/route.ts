@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   const tcuOnly = v.serviceCode==="dsg_tcu" || v.serviceCode==="custom_tcu";
   const reviewOnly = v.serviceCode==="log_review" || v.serviceCode==="emissions_diagnostics";
   const ecuAllowed = !tcuOnly && !reviewOnly;
-  const tcuAllowed = tcuOnly || v.serviceCode==="ecu_tcu_package";
+  const tcuAllowed = tcuOnly || v.serviceCode==="ecu_tcu_package" || v.serviceCode==="addons_only";
   const unique = [...new Set(v.addons)];
   if(unique.some(key=>{
     if(!(key in ADDON_LABELS)) return true;
@@ -39,12 +39,13 @@ export async function POST(req: Request) {
     return group==="tcu" ? !tcuAllowed : !ecuAllowed || group!==v.fuelType;
   })) return NextResponse.json({error:"Invalid or incompatible add-on selection."},{status:400});
 
+  if(v.serviceCode==="addons_only" && unique.length===0 && !v.dtcReview) return NextResponse.json({error:"Select at least one add-on or DTC review."},{status:400});
   const dtcCodes = v.dtcReview ? parseDtcCodes(v.dtcCodes) : [];
   if (v.dtcReview && (!dtcCodes || reviewOnly)) return NextResponse.json({error:"Enter 1-10 valid P or U DTC codes for an ECU or TCU service."},{status:400});
   if (!v.dtcReview && v.dtcCodes.trim()) return NextResponse.json({error:"Enable DTC review to submit fault codes."},{status:400});
   const service=SERVICES[v.serviceCode];
   const addonTotal=unique.reduce((sum,key)=>sum+(addonPrice(key)??0),0) + (v.dtcReview ? DTC_REVIEW_PRICE_PENCE : 0);
-  const quoteRequired=["custom_ecu","custom_tcu","ecu_tcu_package"].includes(v.serviceCode) ||
+  const quoteRequired=["custom_ecu","custom_tcu","ecu_tcu_package","addons_only"].includes(v.serviceCode) ||
     unique.some(key=>addonPrice(key)===null);
   const addonsText=unique.length
     ? "\n\nRequested add-ons (pending compatibility and quotation):\n" +
