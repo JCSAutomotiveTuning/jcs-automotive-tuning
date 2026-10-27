@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       unique.map(key=>`- ${ADDON_LABELS[key]} [${key}]`).join("\n")
     : "";
   const fuelText=ecuAllowed && v.fuelType ? `\nFuel type: ${v.fuelType}` : "";
-  const dtcText = dtcCodes?.length ? `\nDTC review requested (GBP 25.00 fixed for ${dtcCodes.length} code(s)): ${dtcCodes.join(", ")}\nDTC requests subject to diagnostics, safety and legal compliance.` : "";
+  const dtcText = dtcCodes?.length ? `\nDTC review requested (GBP 30.00 fixed for ${dtcCodes.length} code(s)): ${dtcCodes.join(", ")}\nDTC requests subject to diagnostics, safety and legal compliance.` : "";
   const pricingText=`\nIndicative priced add-ons: GBP ${(addonTotal/100).toFixed(2)}` +
     (quoteRequired ? "\nFINAL PRICE REQUIRES MANUAL CONFIRMATION - DO NOT TAKE PAYMENT YET." : "");
   const customerNotes=`${v.notes}${fuelText}${addonsText}${dtcText}${pricingText}`.trim();
