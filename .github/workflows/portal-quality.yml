@@ -35,6 +35,10 @@ jobs:
         run: npm run lint
       - name: Test (mocked, no payments)
         run: npm test
+      - name: Scanner JavaScript syntax checks
+        run: |
+          node --check scripts/scan-worker.mjs
+          node --check scripts/scan-pending-files.mjs
       - name: Production build
         run: npm run build
       - name: TypeScript verification
