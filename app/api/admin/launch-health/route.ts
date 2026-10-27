@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -24,6 +23,7 @@ export async function GET() {
     stripeLiveKey: boolean;
     webhookSigningSecretPresent: boolean;
     stripeApiReachable: boolean;
+    expectedAccountMatches: boolean;
     chargesEnabled: boolean;
     payoutsEnabled: boolean;
     verificationPending: boolean | null;
@@ -32,6 +32,7 @@ export async function GET() {
     stripeLiveKey: production && key.startsWith("sk_live_"),
     webhookSigningSecretPresent: Boolean(process.env.STRIPE_WEBHOOK_SECRET?.startsWith("whsec_")),
     stripeApiReachable: false,
+    expectedAccountMatches: false,
     chargesEnabled: false,
     payoutsEnabled: false,
     verificationPending: null,
@@ -39,9 +40,21 @@ export async function GET() {
   };
   if (keyForEnvironment) {
     try {
-      const accountId = production ? "acct_1UTUpbIt6MsI2RWr" : "acct_1UTh2sEeCDJNUGHR";
-      const account = await new Stripe(key).accounts.retrieve(accountId);
+      // Query the merchant account tied to the active secret key, not a Connect account.
+      const reply = await fetch("https://api.stripe.com/v1/account", {
+        headers: { Authorization: `Bearer ${key}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!reply.ok) throw new Error("Stripe account status check failed");
+      const account = await reply.json() as {
+        id?: string;
+        charges_enabled?: boolean;
+        payouts_enabled?: boolean;
+        requirements?: { currently_due?: string[]; past_due?: string[]; disabled_reason?: string | null };
+      };
       check.stripeApiReachable = true;
+      check.expectedAccountMatches = account.id === (production ? "acct_1UTUpbIt6MsI2RWr" : "acct_1UTh2sEeCDJNUGHR");
       check.chargesEnabled = account.charges_enabled === true;
       check.payoutsEnabled = account.payouts_enabled === true;
       check.verificationPending = Boolean(account.requirements?.currently_due?.length || account.requirements?.past_due?.length || account.requirements?.disabled_reason);
