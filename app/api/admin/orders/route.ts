@@ -319,7 +319,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json(
           {
             error:
-              "Save a quote greater than Ã‚£0 before requesting payment.",
+              "Save a quote greater than £0 before requesting payment.",
           },
           { status: 400 }
         );
@@ -392,7 +392,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json(
           {
             error:
-              "An order must have a price greater than Ã‚£0 before payment can be requested.",
+              "An order must have a price greater than £0 before payment can be requested.",
           },
           { status: 400 }
         );
@@ -439,10 +439,18 @@ export async function PATCH(req: Request) {
       changes.admin_notes = adminNotes;
     }
 
-    const { data: updated, error: updateError } = await admin
+    // Enforce payment/state preconditions in the UPDATE itself, not only
+    // against the earlier snapshot (which can become stale during checkout).
+    let updateQuery = admin
       .from("orders")
       .update(changes)
       .eq("id", orderId)
+      .eq("payment_status", existing.payment_status)
+      .eq("status", existing.status);
+    if (status !== undefined && statusesRequiringPayment.has(status)) {
+      updateQuery = updateQuery.eq("payment_status", "paid");
+    }
+    const { data: updated, error: updateError } = await updateQuery
       .select(
         "id,amount_pence,status,payment_status,admin_notes,updated_at"
       )

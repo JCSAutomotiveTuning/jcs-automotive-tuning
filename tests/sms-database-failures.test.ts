@@ -126,7 +126,7 @@ describe("SMS safety during multiple database failures", () => {
               }),
             }),
 
-            update: (row: { status: string }) => {
+            update: (_row: { status: string }) => {
               const query = {
                 eq() {
                   return query;

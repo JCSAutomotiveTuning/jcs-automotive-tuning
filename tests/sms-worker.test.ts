@@ -90,7 +90,7 @@ describe("Real notification worker SMS safety", () => {
 
         if (table === "notification_deliveries") {
           return {
-            select: (columns: string) => {
+            select: (_columns: string) => {
               const filters: Record<string, string> = {};
 
               const query = {
