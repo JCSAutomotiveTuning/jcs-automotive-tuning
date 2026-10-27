@@ -1,5 +1,6 @@
 export const ADDONS = {
   petrol: [
+    ["original_file_request","Original (ORI / stock) file sourcing request"],
     ["pops_bangs","Pops & bangs"],
     ["ac_pops_med91","MED9.1 A/C-switch pops & bangs - price to be confirmed"],
     ["multimap_med91","MED9.1 multi-map / switchable maps - price to be confirmed"],
@@ -13,6 +14,7 @@ export const ADDONS = {
     ["sensor_scaling", "Sensor scaling (MAP / MAF / TMAP)"],
   ],
   diesel: [
+    ["original_file_request","Original (ORI / stock) file sourcing request"],
     ["launch_control","Launch control"],
     ["hardcut","Hardcut limiter"],
     ["pops_edc15p","EDC15P pops & bangs - price to be confirmed"],
@@ -26,6 +28,7 @@ export const ADDONS = {
     ["swirl_diagnostics","Swirl flap diagnostics / lawful repair"],
   ],
   tcu: [
+    ["original_file_request","Original (ORI / stock) TCU file sourcing request"],
     ["shift_speed","Shift speed optimisation"],
     ["launch_rpm","Launch RPM adjustment"],
     ["torque_capacity","Gearbox torque limit review"],
@@ -45,6 +48,9 @@ export const ADDON_LABELS: Record<string,string> = Object.fromEntries(
 
 // Prices in pence. null means a custom quote is required.
 export const ADDON_PRICES: Record<string, number | null> = {
+  "petrol:original_file_request": 2500,
+  "diesel:original_file_request": 2500,
+  "tcu:original_file_request": 2500,
   "petrol:sensor_scaling": 3000,
   "diesel:sensor_scaling": 3000,
   "petrol:pops_bangs": 3500,
