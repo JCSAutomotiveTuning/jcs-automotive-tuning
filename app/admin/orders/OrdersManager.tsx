@@ -208,7 +208,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
       setUploadingFinished(false);
     }
   }
-  const allowQuote = selected !== null && quoteServices.has(selected.service_code ?? "")
+  const allowQuote = selected !== null && (quoteServices.has(selected.service_code ?? "") || selected.amount_pence === 0)
     && selected.status === "awaiting_review" && selected.payment_status === "unpaid";
   const allowRequestPayment = selected !== null && selected.status === "awaiting_review"
     && selected.payment_status === "unpaid" && selected.amount_pence > 0;
