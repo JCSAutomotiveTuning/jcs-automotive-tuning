@@ -47,7 +47,7 @@ async function verifyGithubJob(request: Request): Promise<boolean> {
       signal: AbortSignal.timeout(7000),
     });
     if (!response.ok) return false;
-    const data = await response.json() as { keys?: JsonWebKey[] };
+    const data = await response.json() as { keys?: Array<JsonWebKey & { kid?: string; alg?: string }> };
     const key = data.keys?.find((candidate) =>
       candidate.kid === header.kid && candidate.kty === "RSA" &&
       (!candidate.alg || candidate.alg === "RS256")
