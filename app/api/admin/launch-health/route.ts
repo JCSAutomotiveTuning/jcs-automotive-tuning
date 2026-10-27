@@ -39,7 +39,8 @@ export async function GET() {
   };
   if (keyForEnvironment) {
     try {
-      const account = await new Stripe(key).accounts.retrieve();
+      const accountId = production ? "acct_1UTUpbIt6MsI2RWr" : "acct_1UTh2sEeCDJNUGHR";
+      const account = await new Stripe(key).accounts.retrieve(accountId);
       check.stripeApiReachable = true;
       check.chargesEnabled = account.charges_enabled === true;
       check.payoutsEnabled = account.payouts_enabled === true;
