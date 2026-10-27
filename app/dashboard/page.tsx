@@ -371,7 +371,7 @@ export default async function Dashboard() {
       </div>
 
       <footer>
-        JCS Automotive Tuning Ãƒâ€š| Keep a separate backup of your original ECU/TCU
+        JCS Automotive Tuning | Keep a separate backup of your original ECU/TCU
         read.
       </footer>
     </main>
