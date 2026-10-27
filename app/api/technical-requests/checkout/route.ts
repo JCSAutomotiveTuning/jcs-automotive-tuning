@@ -23,11 +23,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return NextResponse.json(
-      { error: "Stripe not configured" },
-      { status: 503 }
-    );
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeKey || !/^sk_(test|live)_/.test(stripeKey) ||
+      (process.env.VERCEL_ENV === "production" && !stripeKey.startsWith("sk_live_")) ||
+      (process.env.VERCEL_ENV === "preview" && !stripeKey.startsWith("sk_test_"))) {
+    console.error("Technical checkout Stripe key does not match deployment environment.");
+    return NextResponse.json({ error: "Checkout is not configured correctly." }, { status: 503 });
   }
 
   const admin = createAdminClient();
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
 
   const attempt = attempts[0];
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const stripe = new Stripe(stripeKey);
 
   if (attempt.session_id) {
     try {
