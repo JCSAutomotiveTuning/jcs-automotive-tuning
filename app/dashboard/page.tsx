@@ -150,43 +150,36 @@ export default async function Dashboard() {
         <Link href="/dashboard/support">Support Centre</Link>
       </nav>
 
-      <section className="hero">
-        <div className="eyebrow">Customer dashboard</div>
-
-        <h1>
-          Your <em>orders.</em>
-        </h1>
-
-        <p>
-          Submit a new job and track progress here. File uploads are private
-          and orders are reviewed before any calibration file is released.
-        </p>
+      <section className="jcs-workspace-hero">
+        <div>
+          <div className="eyebrow">JCS Automotive Tuning / Customer workspace</div>
+          <h1>Calibration <em>workspace.</em></h1>
+          <p>Submit ECU and TCU files, monitor your jobs and access diagnostic tools from one place.</p>
+          <div className="jcs-workspace-actions">
+            <a href="#upload-tuning-file" className="btn">+ New tuning request</a>
+            <a href="#order-history" className="btn secondary">View orders</a>
+            <Link href="/dashboard/support" className="btn secondary">Get support</Link>
+          </div>
+        </div>
+        <div className="jcs-workspace-summary">
+          <div className="jcs-summary-label">Your workspace</div>
+          <div className="jcs-summary-grid">
+            <div><strong>{orders?.length ?? 0}</strong><span>Recent orders</span></div>
+            <div><strong>{orders?.filter(o=>!["completed","cancelled","failed"].includes(o.status)).length ?? 0}</strong><span>Active jobs</span></div>
+            <div><strong>{orders?.filter(o=>o.status==="completed").length ?? 0}</strong><span>Completed</span></div>
+            <div><strong><MaskedAmount>{formatPrice(balancePence,"GBP")}</MaskedAmount></strong><span>Wallet balance</span></div>
+          </div>
+          <p>Orders shown: latest 50. Wallet and payment details are available below.</p>
+        </div>
       </section>
-
-      <div style={{ margin: "20px 0" }}>
-  <a
-    href="#upload-tuning-file"
-    className="btn"
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 10,
-      padding: "14px 24px",
-      fontWeight: 700,
-      textDecoration: "none",
-    }}
-  >
-    ↑ Upload Tuning File
-  </a>
-</div>
+      <div className="jcs-section-heading"><div><span className="eyebrow">File services</span><h2>Manage your tuning jobs</h2></div><span className="pill">Private customer workspace</span></div>
       <div className="two">
         <section id="upload-tuning-file" className="card" style={{ scrollMarginTop: 24 }}>
           <h2>Submit a job</h2>
           <NewOrder />
         </section>
 
-        <section className="card">
+        <section id="order-history" className="card" style={{scrollMarginTop:24}}>
           <h2>Order history</h2>
 
           {!orders?.length ? (
