@@ -165,6 +165,7 @@ export async function POST(req: Request) {
     );
   }
 
+  // Atomic metadata registration only; service payment is handled by order checkout.
   const { data: result, error: submissionError } =
     await admin.rpc("submit_file_with_wallet", {
       p_user_id: user.id,
@@ -175,20 +176,6 @@ export async function POST(req: Request) {
     });
 
   if (submissionError) {
-    if (
-      submissionError.message.includes(
-        "Insufficient wallet balance"
-      )
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Insufficient wallet balance for the £20 file submission fee. Please top up your wallet.",
-        },
-        { status: 402 }
-      );
-    }
-
     if (submissionError.message.includes("Order not found")) {
       return NextResponse.json(
         { error: "Order not found." },
@@ -208,7 +195,7 @@ export async function POST(req: Request) {
     }
 
     console.error(
-      "Wallet submission failed:",
+      "File registration failed:",
       submissionError
     );
 
@@ -224,6 +211,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     alreadySubmitted: result === "already_recorded",
-    alreadyCharged: result === "already_charged",
+    includedInServicePrice: true,
   });
 }
