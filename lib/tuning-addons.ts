@@ -1,4 +1,7 @@
 export const ADDONS = {
+  diagnostics: [
+    ["datalog_analysis", "Datalog analysis — technician review of CSV / LOG / TXT (upload log separately)"],
+  ],
   petrol: [
     ["original_file_request","Original (ORI / stock) file sourcing request"],
     ["pops_bangs","Pops & bangs"],
@@ -50,6 +53,7 @@ export const ADDON_LABELS: Record<string,string> = Object.fromEntries(
 
 // Prices in pence. null means a custom quote is required.
 export const ADDON_PRICES: Record<string, number | null> = {
+  "diagnostics:datalog_analysis": 2000,
   "petrol:original_file_request": 3000,
   "diesel:original_file_request": 3000,
   "tcu:original_file_request": 3000,
