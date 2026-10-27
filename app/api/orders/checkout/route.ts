@@ -63,10 +63,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Cannot verify the safety of this order's files." }, { status: 503 });
     }
     const uploadRequired = new Set([
-      "ecu_stage1", "dsg_tcu", "log_review", "custom_ecu", "custom_tcu", "ecu_tcu_package",
+      "ecu_stage1", "dsg_tcu", "log_review", "datalog_analysis", "custom_ecu", "custom_tcu", "ecu_tcu_package",
     ]);
     if (uploadRequired.has(order.service_code) && inputFiles.length === 0) {
-      return NextResponse.json({ error: "Please upload the original tuning file before payment is requested." }, { status: 409 });
+      return NextResponse.json({ error: "Please upload the required original file or datalog before payment is requested." }, { status: 409 });
     }
     if (inputFiles.some(file => file.scan_status !== "clean")) {
       return NextResponse.json({ error: "The uploaded file is still awaiting antivirus clearance. No payment was taken." }, { status: 409 });
