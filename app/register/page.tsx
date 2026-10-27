@@ -9,8 +9,12 @@ export default function Register() {
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setBusy(true); setMessage("");
     const fd = new FormData(e.currentTarget);
+    const val=(k:string)=>String(fd.get(k)??"").trim();
+    const username=val("username").toLowerCase();
+    if(!/^[a-z0-9_]{3,24}$/.test(username)){setBusy(false);setMessage("Use 3-24 letters, numbers or underscores for your username.");return;}
+    if(val("password")!==val("confirmPassword")){setBusy(false);setMessage("Passwords do not match.");return;}
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { error } = await supabase.auth.signUp({ email: String(fd.get("email")), password: String(fd.get("password")), options: { emailRedirectTo: `${location.origin}/dashboard` } });
+    const { error } = await supabase.auth.signUp({ email: String(fd.get("email")), password: String(fd.get("password")), options: { emailRedirectTo: `${location.origin}/dashboard`, data: {full_name:val("fullName"),username,phone:val("phone"),address_line_1:val("address1"),address_line_2:val("address2"),city:val("city"),postcode:val("postcode"),country:val("country"),tuning_tools:val("tools")} } });
     setBusy(false);
     setMessage(error ? error.message : "Account request submitted. Check your email if email confirmation is enabled.");
   }
