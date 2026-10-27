@@ -154,9 +154,22 @@ export async function POST(req: Request) {
       );
     }
   }
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
-    new URL(req.url).origin;
+  // Checkout redirects must use the trusted configured site, never request headers.
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  let base: string;
+  try {
+    const parsed = new URL(configuredSiteUrl ?? "");
+    if (parsed.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && parsed.protocol === "http:" && parsed.hostname === "localhost")) {
+      throw new Error("Invalid site URL protocol");
+    }
+    if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+      throw new Error("Invalid site URL components");
+    }
+    base = parsed.origin + parsed.pathname.replace(/\/+$/, "");
+  } catch {
+    console.error("Technical checkout return URL is not configured correctly.");
+    return NextResponse.json({ error: "Payment return URL is not configured." }, { status: 503 });
+  }
 
   try {
     const session = await stripe.checkout.sessions.create(
