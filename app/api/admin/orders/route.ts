@@ -239,11 +239,11 @@ export async function PATCH(req: Request) {
     }
 
     if (action === "save_quote") {
-      if (!quoteableServices.includes(existing.service_code)) {
+      if (!quoteableServices.includes(existing.service_code) && existing.amount_pence !== 0) {
         return NextResponse.json(
           {
             error:
-              "Quotes can only be set for custom ECU/TCU or add-ons-only services.",
+              "Quotes can only be set for quoted services or zero-priced requests.",
           },
           { status: 400 }
         );
