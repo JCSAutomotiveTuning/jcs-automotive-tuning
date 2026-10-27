@@ -1,75 +1,17 @@
-﻿"use client";
+"use client";
 
 import { MaskedAmount } from "@/components/PriceVisibility";
-import { useState } from "react";
-
-type WalletPanelProps = {
-  balancePence: number;
-};
 
 const formatGBP = (pence: number) =>
-  new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-  }).format(pence / 100);
+  new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 
-export default function WalletPanel({ balancePence }: WalletPanelProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function topUp() {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch("/api/wallet/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.url) {
-        setError(result.error || "Could not start your wallet top-up.");
-        setLoading(false);
-        return;
-      }
-
-      window.location.assign(result.url);
-    } catch {
-      setError("Connection error. Please try again.");
-      setLoading(false);
-    }
-  }
-
+export default function WalletPanel({ balancePence }: { balancePence: number }) {
   return (
     <section className="card">
-      <h2>Your wallet</h2>
-
-      <p>
-        Available credit:{" "}
-        <strong>
-          <MaskedAmount>{formatGBP(balancePence)}</MaskedAmount>
-        </strong>
-      </p>
-
-      <p>
-        Add {formatGBP(2000)} securely through Stripe.
-        File submissions are charged at the price shown on each order.
-      </p>
-
-      <button
-        className="btn blue"
-        type="button"
-        onClick={topUp}
-        disabled={loading}
-      >
-        {loading
-          ? "Connecting to Stripe..."
-          : `Top up ${formatGBP(2000)}`}
-      </button>
-
-      {error && <p role="alert">{error}</p>}
+      <h2>Legacy wallet credit</h2>
+      <p>Existing balance: <strong><MaskedAmount>{formatGBP(balancePence)}</MaskedAmount></strong></p>
+      <p>File uploads are included in your service price. No separate £20 upload charge or wallet top-up is required. New top-ups are disabled while historical credits are reconciled.</p>
+      {balancePence > 0 && <p>Existing wallet credit is preserved. Please contact support about how to apply or refund it; no automatic deduction will be made.</p>}
     </section>
   );
 }
