@@ -109,13 +109,16 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!wallet || wallet.balance_pence < order.amount_pence) {
-      const required = (order.amount_pence / 100).toFixed(2);
+    // submit_file_with_wallet charges a fixed £20 submission fee, not the
+    // quoted service price. Keep the pre-check aligned with the RPC.
+    const submissionFeePence = 2000;
+    if (!wallet || wallet.balance_pence < submissionFeePence) {
+      const required = (submissionFeePence / 100).toFixed(2);
       const available = ((wallet?.balance_pence ?? 0) / 100).toFixed(2);
 
       return NextResponse.json(
         {
-          error: `Insufficient wallet credit. Order: GBP ${required}; available: GBP ${available}. Please top up first.`
+          error: `Insufficient wallet credit. Submission fee: GBP ${required}; available: GBP ${available}. Please top up first.`
         },
         { status: 402 }
       );
