@@ -29,13 +29,14 @@ export async function POST(req: Request) {
   if(!isServiceCode(v.serviceCode)) return NextResponse.json({error:"Unsupported service."},{status:400});
 
   const tcuOnly = v.serviceCode==="dsg_tcu" || v.serviceCode==="custom_tcu";
-  const reviewOnly = v.serviceCode==="log_review" || v.serviceCode==="emissions_diagnostics";
+  const reviewOnly = v.serviceCode==="log_review" || v.serviceCode==="datalog_analysis" || v.serviceCode==="emissions_diagnostics";
   const ecuAllowed = !tcuOnly && !reviewOnly;
   const tcuAllowed = tcuOnly || v.serviceCode==="ecu_tcu_package" || v.serviceCode==="addons_only";
   const unique = [...new Set(v.addons)];
   if(unique.some(key=>{
     if(!(key in ADDON_LABELS)) return true;
     const group=key.split(":")[0];
+    if (group === "diagnostics") return reviewOnly;
     return group==="tcu" ? !tcuAllowed : !ecuAllowed || group!==v.fuelType;
   })) return NextResponse.json({error:"Invalid or incompatible add-on selection."},{status:400});
 
