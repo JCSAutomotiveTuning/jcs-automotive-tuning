@@ -128,45 +128,32 @@ export default async function Dashboard() {
     <>
     <PriceVisibilityStyles />
     <main className="wrap">
-      <nav className="nav"><Link className="btn secondary" href="/dashboard/technical-requests">VAG Parts &amp; Wiring (£15)</Link>
-  <Link className="brand" href="/">
-    JCS <span>PORTAL</span>
-  </Link>
-
-  <div className="row">
-        <LiveClock />
-    <PriceVisibilityToggle />
-    <span className="pill">{user.email}</span>
-
-    <Link className="btn secondary" href="/dashboard/dtc">DTC Lookup</Link>
-    <Link className="btn secondary" href="/dashboard/datalog-analysis">Datalog Analysis</Link>
-    <Link className="btn secondary" href="/dashboard/file-compare">File Compare</Link>
-    <Link className="btn secondary" href="/dashboard/file-identification">File ID</Link>
-    <Link className="btn secondary" href="/dashboard/tool-compatibility">Tool Compatibility</Link>
-    <Link className="btn secondary" href="/dashboard/dealer">Dealer Application</Link>
-    <Link className="btn secondary" href="/dashboard/vehicle-lookup">ECU Database</Link>
-    <Link className="btn secondary" href="/dashboard/support">
-      Support Centre
-    </Link>
-
-    <form action="/auth/signout" method="post">
-      <button className="btn secondary" type="submit">
-        Sign out
-      </button>
-    </form>
-
-    {profile?.role === "admin" && (
-      <Link className="btn blue" href="/admin">
-        Admin
-      </Link>
-    )}
-  </div>
-</nav>
+      <nav className="nav jcs-dashboard-nav" aria-label="Customer portal">
+        <Link className="brand" href="/">JCS <span>PORTAL</span></Link>
+        <div className="jcs-account-actions">
+          <LiveClock />
+          <PriceVisibilityToggle />
+          <span className="pill jcs-account-email">{user.email}</span>
+          {profile?.role === "admin" && <Link className="btn blue" href="/admin">Admin</Link>}
+          <form action="/auth/signout" method="post"><button className="btn secondary" type="submit">Sign out</button></form>
+        </div>
+      </nav>
+      <nav className="jcs-tool-nav" aria-label="Portal tools">
+        <Link href="/dashboard/technical-requests">Parts &amp; Wiring</Link>
+        <Link href="/dashboard/dtc">DTC Lookup</Link>
+        <Link href="/dashboard/datalog-analysis">Datalog Analysis</Link>
+        <Link href="/dashboard/file-compare">File Compare</Link>
+        <Link href="/dashboard/file-identification">File ID</Link>
+        <Link href="/dashboard/tool-compatibility">Tool Compatibility</Link>
+        <Link href="/dashboard/dealer">Dealer Application</Link>
+        <Link href="/dashboard/vehicle-lookup">ECU Database</Link>
+        <Link href="/dashboard/support">Support Centre</Link>
+      </nav>
 
       <section className="hero">
         <div className="eyebrow">Customer dashboard</div>
 
-        <h1 style={{ fontSize: 54 }}>
+        <h1>
           Your <em>orders.</em>
         </h1>
 
