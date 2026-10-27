@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { isKnownCompromisedPassword, passwordStrengthError, MIN_PASSWORD_LENGTH } from "@/lib/password-security";
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
@@ -85,8 +86,9 @@ export default function ResetPasswordPage() {
     event.preventDefault();
     setMessage("");
 
-    if (password.length < 8) {
-      setMessage("Your password must be at least 8 characters.");
+    const strengthError = passwordStrengthError(password);
+    if (strengthError) {
+      setMessage(strengthError);
       return;
     }
 
@@ -98,6 +100,10 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
+      if (await isKnownCompromisedPassword(password)) {
+        setMessage("That password appears in a known data breach. Choose a different, unique password.");
+        return;
+      }
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password });
 
@@ -112,7 +118,7 @@ export default function ResetPasswordPage() {
       setPassword("");
       setConfirmPassword("");
     } catch {
-      setMessage("Something went wrong. Please try again.");
+      setMessage("Password security check or reset could not be completed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -135,7 +141,7 @@ export default function ResetPasswordPage() {
               id="password"
               type="password"
               autoComplete="new-password"
-              minLength={8}
+              minLength={MIN_PASSWORD_LENGTH}
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -154,7 +160,7 @@ export default function ResetPasswordPage() {
               id="confirmPassword"
               type="password"
               autoComplete="new-password"
-              minLength={8}
+              minLength={MIN_PASSWORD_LENGTH}
               required
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
