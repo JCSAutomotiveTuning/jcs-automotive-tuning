@@ -22,6 +22,7 @@ const quoteableServices = [
   "custom_ecu",
   "custom_tcu",
   "ecu_tcu_package",
+  "addons_only",
 ];
 
 const updateSchema = z
@@ -224,7 +225,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json(
           {
             error:
-              "Quotes can only be set for custom ECU/TCU services.",
+              "Quotes can only be set for custom ECU/TCU or add-ons-only services.",
           },
           { status: 400 }
         );
