@@ -141,6 +141,9 @@ export default async function Dashboard() {
     <Link className="btn secondary" href="/dashboard/dtc">DTC Lookup</Link>
     <Link className="btn secondary" href="/dashboard/datalog-analysis">Datalog Analysis</Link>
     <Link className="btn secondary" href="/dashboard/file-compare">File Compare</Link>
+    <Link className="btn secondary" href="/dashboard/file-identification">File ID</Link>
+    <Link className="btn secondary" href="/dashboard/tool-compatibility">Tool Compatibility</Link>
+    <Link className="btn secondary" href="/dashboard/dealer">Dealer Application</Link>
     <Link className="btn secondary" href="/dashboard/vehicle-lookup">ECU Database</Link>
     <Link className="btn secondary" href="/dashboard/support">
       Support Centre
