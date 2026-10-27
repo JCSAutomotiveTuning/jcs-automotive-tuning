@@ -46,7 +46,7 @@ async function scanBytes(bytes) {
 
 async function selfTest() {
   // Official EICAR benign antivirus test signature.
-  const eicar = String.raw`X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*`;
+  const eicar = String.raw`X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*`;
   if (await scanBytes(Buffer.from(eicar, "ascii")) !== "blocked") {
     throw new Error("ClamAV failed EICAR self-test; do not scan production files");
   }
