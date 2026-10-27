@@ -239,9 +239,13 @@ export default function NewOrder() {
     <section>
       <h3>4. Job notes and original file</h3>
       <div className="field">
-        <label htmlFor="notes">Job notes</label>
-        <textarea id="notes" name="notes" rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Symptoms, hardware changes, read tool, goals..." maxLength={2500}/>
+        <label htmlFor="notes">{service === "log_review" ? "Log readings / symptoms / review request" : "Job notes"}</label>
+        <textarea id="notes" name="notes" rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={service === "log_review" ? "Paste log excerpts and describe the fault, RPM range, load, gear, requested/actual values, and what you want reviewed..." : "Symptoms, hardware changes, read tool, goals..."} maxLength={2500}/>
       </div>
+      {service === "log_review" && <div className="notice">
+        <strong>£20 technician datalog review</strong>
+        <p>Paste relevant log readings, symptoms, test conditions and what you want checked into the Job notes box above. Attach the full CSV, LOG or TXT file below for an accurate review. A road datalog is not a measured dyno run.</p>
+      </div>}
       <div className="field">
         <label htmlFor="order-file">Original read file (optional)</label>
         <input id="order-file" name="file" type="file" accept=".bin,.ori,.hex,.frf,.odx,.txt,.csv,.log,.zip" disabled={busy}
