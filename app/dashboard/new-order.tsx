@@ -4,12 +4,12 @@ import { FormEvent, useState } from "react";
 import { ADDONS, ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE, type AddonGroup } from "@/lib/tuning-addons";
 
 const SERVICE_OPTIONS = [
-  ["ecu_stage1", "ECU Stage 1 file service - GBP 45"],
-  ["dsg_tcu", "DSG / TCU calibration review - GBP 60"],
-  ["log_review", "Diagnostic log / file review - GBP 15"],
-  ["emissions_diagnostics", "DPF / EGR diagnostics and lawful repair assessment - GBP 25"],
-  ["custom_ecu", "Custom ECU tuning - from GBP 180"],
-  ["custom_tcu", "Custom DSG / TCU tuning - from GBP 180"],
+  ["ecu_stage1", "ECU Stage 1 file service - GBP 55"],
+  ["dsg_tcu", "DSG / TCU calibration review - GBP 70"],
+  ["log_review", "Diagnostic log / file review - GBP 20"],
+  ["emissions_diagnostics", "DPF / EGR diagnostics and lawful repair assessment - GBP 30"],
+  ["custom_ecu", "Custom ECU tuning - from GBP 195"],
+  ["custom_tcu", "Custom DSG / TCU tuning - from GBP 195"],
   ["ecu_tcu_package", "Custom ECU + DSG / TCU package - quote required"],
 ] as const;
 
@@ -39,8 +39,8 @@ export default function NewOrder() {
   ];
   const visibleAddons = addons.filter(a => visibleGroups.some(g => a.startsWith(`${g}:`)));
   const basePrices: Record<string,number> = {
-    ecu_stage1:4500,dsg_tcu:6000,log_review:1500,
-    emissions_diagnostics:2500,custom_ecu:18000,custom_tcu:18000,ecu_tcu_package:0,
+    ecu_stage1:5500,dsg_tcu:7000,log_review:2000,
+    emissions_diagnostics:3000,custom_ecu:19500,custom_tcu:19500,ecu_tcu_package:0,
   };
   const dtcCodes = dtcReview ? parseDtcCodes(dtcInput) : [];
   const dtcTotal = dtcReview && dtcCodes ? DTC_REVIEW_PRICE_PENCE : 0;
@@ -234,7 +234,7 @@ export default function NewOrder() {
           <small>{dtcCodes ? `${dtcCodes.length} unique code(s) - ${pounds(dtcTotal)} total` : "Enter valid five-character P or U codes."} Review does not guarantee removal; safety and legal compliance apply.</small>
         </div>}
       </fieldset>
-      <p style={{fontSize:13,opacity:.8}}>Original (ORI/stock) file sourcing is £25 per requested controller, subject to an exact compatible hardware/software match and availability. JCS will confirm suitability before supply. Add-ons are requests, not guaranteed features. Availability, safety and legal road-use compliance are reviewed before work begins.</p>
+      <p style={{fontSize:13,opacity:.8}}>Original (ORI/stock) file sourcing is £30 per requested controller, subject to an exact compatible hardware/software match and availability. JCS will confirm suitability before supply. Add-ons are requests, not guaranteed features. Availability, safety and legal road-use compliance are reviewed before work begins.</p>
     </section>}
     <section>
       <h3>4. Job notes and original file</h3>
