@@ -44,3 +44,12 @@ This checklist is a verification runbook, not evidence that checks have passed. 
 - Wallet top-ups are currently disabled in the API, but legacy wallet credits and webhook handling remain; do not delete historical balances.
 - Release gates that require Stripe/Vercel/Supabase dashboard access must be independently verified; a repository PR cannot prove production account settings.
 - Do not merge security-sensitive payment handlers without isolation and tested migration rollback.
+
+## Verified live-state findings — 27 October 2026
+- Stripe live merchant account: charges enabled, payouts enabled, card payments active, no presently due verification requirements. Existing production webhook endpoint enabled.
+- Live Stripe webhook currently subscribes only to Checkout completion and asynchronous-success/failure events. Refund/dispute event subscriptions and handlers are outstanding.
+- Connected Stripe sandbox currently has **no Checkout Sessions** and **no webhook endpoints**. Do not claim an end-to-end sandbox test passed.
+- Read-only production database audit: **one inconsistent order** with workflow status `paid` and payment_status `unpaid` (amount £45), without any checkout or Stripe session reference. **Do not mark it paid unless independent Stripe evidence confirms payment.**
+- Production pending/errored file scan queues: zero records in either category for order files and technical files at time of check.
+- Supabase security advisor reports leaked-password protection disabled; RLS-enabled-without-policy notices exist for service-only tables. Audit privileges before treating this as a customer exposure; no direct exposure established by this finding.
+- A manual customer A/B authorization test has **not** been performed. RLS SELECT policy review alone is not an end-to-end test.
