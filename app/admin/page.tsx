@@ -473,12 +473,12 @@ export default async function AdminDashboard() {
                     href="/admin/files"
                     className="group flex items-center gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 transition hover:border-sky-400/25 hover:bg-sky-400/[0.04] sm:p-5"
                   >
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-400/10 text-xl text-sky-300">Ã¢â€¡Â§</span>
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-400/10 text-xl text-sky-300">⇧</span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-white">Tuning file management</span>
                       <span className="mt-1 block text-xs leading-5 text-slate-500">Review uploaded ECU and TCU files.</span>
                     </span>
-                    <span className="text-lg text-slate-600 transition group-hover:translate-x-1 group-hover:text-sky-300">Ã¢â€ â€™</span>
+                    <span className="text-lg text-slate-600 transition group-hover:translate-x-1 group-hover:text-sky-300">→</span>
                   </Link>
                 </div>
               </section>
@@ -556,7 +556,7 @@ export default async function AdminDashboard() {
             </div>
 
             <footer className="mt-10 flex flex-col justify-between gap-3 border-t border-white/[0.08] py-6 text-xs text-slate-600 sm:flex-row sm:items-center">
-              <p>Â© {new Date().getFullYear()} JCS Automotive Tuning</p>
+              <p>© {new Date().getFullYear()} JCS Automotive Tuning</p>
               <p>Administrator workspace <span className="px-2 text-slate-700">/</span> Built for the workshop</p>
             </footer>
           </div>
