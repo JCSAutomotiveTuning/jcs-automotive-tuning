@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { ADDONS, ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE, type AddonGroup } from "@/lib/tuning-addons";
 
 const SERVICE_OPTIONS = [
@@ -18,24 +18,20 @@ const SERVICE_OPTIONS = [
 const EXTENSIONS = ["bin","ori","hex","frf","odx","txt","csv","log","zip"];
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 
-export default function NewOrder() {
+export default function NewOrder({ initialService = "ecu_stage1" }: { initialService?: string }) {
   const [message,setMessage] = useState("");
   const [busy,setBusy] = useState(false);
   const [file,setFile] = useState<File|null>(null);
   const [logFile,setLogFile] = useState<File|null>(null);
   const [retryOrderId,setRetryOrderId] = useState<string|null>(null);
   const [retryQuoteRequired,setRetryQuoteRequired] = useState(false);
-  const [service,setService] = useState<string>("ecu_stage1");
+  const [service,setService] = useState<string>(initialService);
   const [fuel,setFuel] = useState<"petrol"|"diesel">("petrol");
   const [addons,setAddons] = useState<string[]>([]);
   const [notes,setNotes] = useState("");
   const [dtcReview,setDtcReview] = useState(false);
   const [dtcInput,setDtcInput] = useState("");
 
-  useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("service");
-    if (requested && SERVICE_OPTIONS.some(([code]) => code === requested)) setService(requested);
-  }, []);
 
   const tcuService = service === "dsg_tcu" || service === "custom_tcu";
   const reviewOnly = service === "log_review" || service === "datalog_analysis" || service === "emissions_diagnostics";
