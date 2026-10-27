@@ -54,6 +54,19 @@ export async function POST(req: Request) {
     );
   }
 
+  // Restrict upload links to the application origin, not cross-site form submissions.
+  const origin = req.headers.get("origin");
+  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL;
+  if (origin && configuredOrigin) {
+    try {
+      if (new URL(origin).origin !== new URL(configuredOrigin).origin) {
+        return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+    }
+  }
+
   const { data: order } = await supabase
     .from("orders")
     .select("id,status,amount_pence,payment_status")
