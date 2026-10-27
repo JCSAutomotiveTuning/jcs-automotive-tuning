@@ -64,7 +64,8 @@ export async function POST(req: Request) {
     service_name:service.name,
     // Server-calculated price. Custom-quote orders MUST NOT be checked out
     // before an admin confirms and updates the agreed final amount.
-    amount_pence:service.pricePence+addonTotal,
+    // Quoted work has no payable amount until an administrator saves the agreed quote.
+    amount_pence: quoteRequired ? 0 : service.pricePence + addonTotal,
     currency:"GBP",
     status:"awaiting_review",
     payment_status:"unpaid",
