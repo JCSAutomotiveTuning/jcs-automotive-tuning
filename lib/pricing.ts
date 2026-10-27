@@ -4,27 +4,27 @@
 export const SERVICES = {
   ecu_stage1: {
     name: "ECU Stage 1 file service",
-    pricePence: 4500,
+    pricePence: 5500,
   },
   dsg_tcu: {
     name: "DSG / TCU calibration review",
-    pricePence: 6000,
+    pricePence: 7000,
   },
   log_review: {
     name: "Diagnostic log / file review",
-    pricePence: 1500,
+    pricePence: 2000,
   },
   emissions_diagnostics: {
     name: "DPF / EGR diagnostics and lawful repair assessment",
-    pricePence: 2500,
+    pricePence: 3000,
   },
   custom_ecu: {
-    name: "Custom ECU tuning — from £180",
-    pricePence: 18000,
+    name: "Custom ECU tuning — from £195",
+    pricePence: 19500,
   },
   custom_tcu: {
-    name: "Custom DSG / TCU tuning — from £180",
-    pricePence: 18000,
+    name: "Custom DSG / TCU tuning — from £195",
+    pricePence: 19500,
   },
   ecu_tcu_package: {
     name: "Custom ECU + DSG / TCU package — quote required",
