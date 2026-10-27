@@ -18,6 +18,10 @@ export const SERVICES = {
     name: "ECU / TCU file check & review",
     pricePence: 2000,
   },
+  datalog_analysis: {
+    name: "Datalog analysis — technician review",
+    pricePence: 2000,
+  },
   emissions_diagnostics: {
     name: "DPF / EGR diagnostics and lawful repair assessment",
     pricePence: 3000,
