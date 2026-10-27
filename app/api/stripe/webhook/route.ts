@@ -17,6 +17,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // Never mix Stripe's test and live environments in hosted deployments.
+  if ((!/^sk_(test|live)_/.test(secretKey)) || !webhookSecret.startsWith("whsec_") ||
+      (process.env.VERCEL_ENV === "production" && !secretKey.startsWith("sk_live_")) ||
+      (process.env.VERCEL_ENV === "preview" && !secretKey.startsWith("sk_test_"))) {
+    console.error("Stripe webhook configuration does not match this environment.");
+    return NextResponse.json({ error: "Webhook is not configured for this environment." }, { status: 503 });
+  }
+
   const stripe = new Stripe(secretKey);
   const signature = req.headers.get("stripe-signature");
 
@@ -42,7 +50,13 @@ export async function POST(req: Request) {
     );
   }
 
-const handledCheckoutEvents = new Set<string>([
+  if ((process.env.VERCEL_ENV === "production" && event.livemode !== true) ||
+      (process.env.VERCEL_ENV === "preview" && event.livemode !== false)) {
+    console.error("Stripe webhook event mode does not match deployment.");
+    return NextResponse.json({ error: "Payment mode mismatch." }, { status: 400 });
+  }
+
+  const handledCheckoutEvents = new Set<string>([
     "checkout.session.completed",
     "checkout.session.async_payment_succeeded",
     "checkout.session.async_payment_failed",
