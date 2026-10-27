@@ -48,23 +48,23 @@ export const ADDON_LABELS: Record<string,string> = Object.fromEntries(
 
 // Prices in pence. null means a custom quote is required.
 export const ADDON_PRICES: Record<string, number | null> = {
-  "petrol:original_file_request": 2500,
-  "diesel:original_file_request": 2500,
-  "tcu:original_file_request": 2500,
+  "petrol:original_file_request": 3000,
+  "diesel:original_file_request": 3000,
+  "tcu:original_file_request": 3000,
   "petrol:sensor_scaling": 3000,
   "diesel:sensor_scaling": 3000,
-  "petrol:pops_bangs": 3500,
-  "petrol:launch_control": 3500,
-  "petrol:cold_start": 2000,
-  "petrol:rev_limit": 2000,
-  "petrol:lambda_opt": 3500,
+  "petrol:pops_bangs": 4000,
+  "petrol:launch_control": 4000,
+  "petrol:cold_start": 2500,
+  "petrol:rev_limit": 2500,
+  "petrol:lambda_opt": 4000,
   "petrol:exhaust_flap": 2500,
   "petrol:runner_flap": 2500,
   "petrol:torque_limit": 3000,
   "petrol:ac_pops_med91": null,
   "petrol:multimap_med91": null,
-  "diesel:hardcut": 3500,
-  "diesel:launch_control": 3500,
+  "diesel:hardcut": 4000,
+  "diesel:launch_control": 4000,
   "diesel:torque_limit": 3000,
   "diesel:smoke_review": 3500,
   "diesel:egr_diagnostics": 2500,
@@ -74,7 +74,7 @@ export const ADDON_PRICES: Record<string, number | null> = {
   "diesel:pops_edc15p": null,
   "diesel:switchable_edc15p": null,
   "tcu:shift_speed": 3000,
-  "tcu:launch_rpm": 4000,
+  "tcu:launch_rpm": 4500,
   "tcu:torque_capacity": 3000,
   "tcu:shift_rpm": 2500,
   "tcu:manual_mode": 3500,
@@ -84,7 +84,7 @@ export const ADDON_PRICES: Record<string, number | null> = {
 };
 
 // Fixed fee per DTC review request (1-10 unique Pxxxx or Uxxxx codes).
-export const DTC_REVIEW_PRICE_PENCE = 2500;
+export const DTC_REVIEW_PRICE_PENCE = 3000;
 export function parseDtcCodes(input: string): string[] | null {
   const tokens = input.toUpperCase().split(/[\s,;]+/).filter(Boolean);
   if (!tokens.length || tokens.length > 10 || tokens.some(code => !/^[PU][0-9A-F]{4}$/.test(code))) return null;
