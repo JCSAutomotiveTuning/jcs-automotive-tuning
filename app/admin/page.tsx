@@ -17,24 +17,24 @@ const money = (pence: number) =>
   }).format(pence / 100);
 
 const navigation = [
-  { label: "Technical Requests", description: "VAG parts and wiring tickets", href: "/admin/technical-requests", icon: "âŒ" },
+  { label: "Technical Requests", description: "VAG parts and wiring tickets", href: "/admin/technical-requests", icon: "⌁" },
   {
     label: "Customers",
     description: "Manage customer accounts",
     href: "/admin/customers",
-    icon: "â™™",
+    icon: "♙",
   },
   {
     label: "Orders",
     description: "Process tuning jobs",
     href: "/admin/orders",
-    icon: "â–¤",
+    icon: "▤",
   },
   {
     label: "Tuning Files",
     description: "Uploads and completed files",
     href: "/admin/files",
-    icon: "â‡§",
+    icon: "⇧",
   },
   {
     label: "Wallet & Credits",
@@ -46,13 +46,13 @@ const navigation = [
     label: "Transactions",
     description: "Payments and credit history",
     href: "/admin/transactions",
-    icon: "â‡„",
+    icon: "⇄",
   },
   {
     label: "Team & Assignments",
     description: "Staff roles and tuning job assignments",
     href: "/admin/staff",
-    icon: "âš’",
+    icon: "⚒",
   },
   {
     label: "DTC Lookup",
@@ -64,13 +64,13 @@ const navigation = [
     label: "Loyalty Points",
     description: "Customer reward balances",
     href: "/admin/loyalty",
-    icon: "â˜…",
+    icon: "★",
   },
   {
     label: "Settings",
     description: "Administrator settings",
     href: "/admin/settings",
-    icon: "âš™",
+    icon: "⚙",
   },
 ];
 
@@ -132,7 +132,7 @@ export default async function AdminDashboard() {
       label: "Total customers",
       value: String(customers.count ?? 0),
       detail: "Registered customer accounts",
-      icon: "â™™",
+      icon: "♙",
       accent: "border-t-sky-400",
       iconStyle: "bg-sky-400/10 text-sky-300",
     },
@@ -140,7 +140,7 @@ export default async function AdminDashboard() {
       label: "Open orders",
       value: String(openOrders.count ?? 0),
       detail: "Jobs not yet closed",
-      icon: "â–¤",
+      icon: "▤",
       accent: "border-t-amber-400",
       iconStyle: "bg-amber-400/10 text-amber-300",
     },
@@ -148,7 +148,7 @@ export default async function AdminDashboard() {
       label: "Completed jobs",
       value: String(completedOrders.count ?? 0),
       detail: "Successfully completed",
-      icon: "âœ“",
+      icon: "✓",
       accent: "border-t-emerald-400",
       iconStyle: "bg-emerald-400/10 text-emerald-300",
     },
@@ -214,7 +214,7 @@ export default async function AdminDashboard() {
                 className="flex items-center gap-3 rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-3 text-sm font-semibold text-sky-300 shadow-sm shadow-sky-950/20 transition hover:bg-sky-400/15"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-400/10 text-lg">
-                  â—«
+                  ◫
                 </span>
                 <span>Overview</span>
               </Link>
@@ -241,7 +241,7 @@ export default async function AdminDashboard() {
                     </span>
                     {item.href && (
                       <span className="text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-sky-300">
-                        â†’
+                        →
                       </span>
                     )}
                   </>
@@ -346,7 +346,7 @@ export default async function AdminDashboard() {
 
                 <div className="relative flex flex-wrap items-center gap-3">
                   <div className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
-                    <span className="text-lg text-sky-300">â—·</span>
+                    <span className="text-lg text-sky-300">◷</span>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                         Local time
@@ -358,7 +358,7 @@ export default async function AdminDashboard() {
                     href="/admin/orders"
                     className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-sky-400 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg shadow-sky-950/30 transition hover:-translate-y-0.5 hover:bg-sky-300"
                   >
-                    Manage orders <span aria-hidden="true">â†’</span>
+                    Manage orders <span aria-hidden="true">→</span>
                   </Link>
                 </div>
               </div>
@@ -435,7 +435,7 @@ export default async function AdminDashboard() {
                     className="group flex items-center gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 transition hover:border-sky-400/25 hover:bg-sky-400/[0.04] sm:p-5"
                   >
                     <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-400/10 text-xl text-sky-300">
-                      â–¤
+                      ▤
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-bold text-white">
@@ -446,7 +446,7 @@ export default async function AdminDashboard() {
                       </span>
                     </span>
                     <span className="text-lg text-slate-600 transition group-hover:translate-x-1 group-hover:text-sky-300">
-                      â†’
+                      →
                     </span>
                   </Link>
 
@@ -455,7 +455,7 @@ export default async function AdminDashboard() {
                     className="group flex items-center gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 transition hover:border-amber-400/25 hover:bg-amber-400/[0.035] sm:p-5"
                   >
                     <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-xl text-amber-300">
-                      â™™
+                      ♙
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-bold text-white">
@@ -466,7 +466,7 @@ export default async function AdminDashboard() {
                       </span>
                     </span>
                     <span className="text-lg text-slate-600 transition group-hover:translate-x-1 group-hover:text-amber-300">
-                      â†’
+                      →
                     </span>
                   </Link>
                   <Link
@@ -540,7 +540,7 @@ export default async function AdminDashboard() {
                   <div className="mt-7 rounded-xl border border-sky-400/15 bg-gradient-to-br from-sky-400/[0.08] to-transparent p-4">
                     <div className="flex items-center gap-2">
                       <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-400/10 text-sm text-sky-300">
-                        âœ“
+                        ✓
                       </span>
                       <p className="text-xs font-bold text-white">
                         Dashboard connected
