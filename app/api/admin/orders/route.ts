@@ -246,10 +246,10 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "Could not verify the uploaded files before payment." }, { status: 503 });
       }
       const uploadRequired = new Set([
-        "ecu_stage1", "dsg_tcu", "log_review", "custom_ecu", "custom_tcu", "ecu_tcu_package",
+        "ecu_stage1", "dsg_tcu", "log_review", "datalog_analysis", "custom_ecu", "custom_tcu", "ecu_tcu_package",
       ]);
       if (uploadRequired.has(existing.service_code) && inputFiles.length === 0) {
-        return NextResponse.json({ error: "This tuning service requires the customer's original file before payment." }, { status: 409 });
+        return NextResponse.json({ error: "This service requires the customer's original file or datalog before payment." }, { status: 409 });
       }
       if (inputFiles.some(file => file.scan_status !== "clean")) {
         return NextResponse.json({ error: "Wait for antivirus clearance of uploaded files before requesting payment." }, { status: 409 });
