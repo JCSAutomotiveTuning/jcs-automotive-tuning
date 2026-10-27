@@ -319,7 +319,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json(
           {
             error:
-              "Save a quote greater than Ã‚£0 before requesting payment.",
+              "Save a quote greater than £0 before requesting payment.",
           },
           { status: 400 }
         );
@@ -392,7 +392,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json(
           {
             error:
-              "An order must have a price greater than Ã‚£0 before payment can be requested.",
+              "An order must have a price greater than £0 before payment can be requested.",
           },
           { status: 400 }
         );
