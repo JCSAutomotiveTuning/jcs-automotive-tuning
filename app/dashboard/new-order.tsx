@@ -65,6 +65,7 @@ export default function NewOrder() {
     e.preventDefault();
     if (busy) return;
     setMessage("");
+    const selectedLogFile = visibleAddons.includes("diagnostics:datalog_analysis") ? logFile : null;
 
     if (!retryOrderId && service === "addons_only" && visibleAddons.length === 0 && !dtcReview) {
       setMessage("Select at least one add-on or DTC review for an add-ons-only order.");
@@ -80,18 +81,18 @@ export default function NewOrder() {
       setMessage("Please attach a CSV, LOG or TXT datalog for this analysis request.");
       return;
     }
-    if (!retryOrderId && visibleAddons.includes("diagnostics:datalog_analysis") && !logFile) {
+    if (!retryOrderId && visibleAddons.includes("diagnostics:datalog_analysis") && !selectedLogFile) {
       setMessage("Please attach a separate CSV, LOG or TXT datalog for the analysis add-on.");
       return;
     }
 
-    for (const uploadFile of [file, logFile].filter((item): item is File => Boolean(item))) {
+    for (const uploadFile of [file, selectedLogFile].filter((item): item is File => Boolean(item))) {
       const ext = uploadFile.name.split(".").pop()?.toLowerCase();
       if (!ext || !EXTENSIONS.includes(ext)) {
         setMessage("Unsupported file type.");
         return;
       }
-      if ((uploadFile === logFile || (service === "datalog_analysis" && uploadFile === file)) && !["csv", "log", "txt"].includes(ext)) {
+      if ((uploadFile === selectedLogFile || (service === "datalog_analysis" && uploadFile === file)) && !["csv", "log", "txt"].includes(ext)) {
         setMessage("Datalogs must be CSV, LOG or TXT files.");
         return;
       }
@@ -101,7 +102,7 @@ export default function NewOrder() {
       }
     }
 
-    if (retryOrderId && !file && !logFile) {
+    if (retryOrderId && !file && !selectedLogFile) {
       setMessage("Choose a file to retry the existing order.");
       return;
     }
@@ -140,7 +141,7 @@ export default function NewOrder() {
         setRetryQuoteRequired(requiresQuote);
       }
 
-      for (const uploadFile of [file, logFile].filter((item): item is File => Boolean(item))) {
+      for (const uploadFile of [file, selectedLogFile].filter((item): item is File => Boolean(item))) {
         setMessage(`Preparing secure upload for order ${orderId}...`);
 
         const up = await fetch("/api/uploads/sign", {
@@ -266,7 +267,7 @@ export default function NewOrder() {
       <p style={{fontSize:13,opacity:.8}}>Original (ORI/stock) file sourcing is £30 per requested controller, subject to an exact compatible hardware/software match and availability. JCS will confirm suitability before supply. Add-ons are requests, not guaranteed features. Availability, safety and legal road-use compliance are reviewed before work begins.</p>
     </section>}
     <section>
-      <h3>4. Job notes and original file</h3>
+      <h3>4. Job notes and file uploads</h3>
       <div className="field">
         <label htmlFor="notes">{service === "datalog_analysis" ? "Datalog readings, symptoms and test conditions" : service === "log_review" ? "File review details / concerns" : "Job notes"}</label>
         <textarea id="notes" name="notes" rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={service === "datalog_analysis" ? "Vehicle/ECU type, logger used, units and channels, gear and RPM range, boost/fuelling/shift symptoms..." : service === "log_review" ? "ECU/TCU type, original or modified file, suspected problems, DTCs, and what you want checked..." : "Symptoms, hardware changes, read tool, goals..."} maxLength={2500}/>
@@ -283,7 +284,7 @@ export default function NewOrder() {
         <label htmlFor="order-file">{service === "datalog_analysis" ? "Datalog file (required)" : "Original ECU / TCU read file (optional)"}</label>
         <input id="order-file" name="file" type="file" accept={service === "datalog_analysis" ? ".csv,.log,.txt" : ".bin,.ori,.hex,.frf,.odx,.txt,.csv,.log,.zip"} disabled={busy}
           onChange={e=>setFile(e.target.files?.[0]||null)}/>
-        <small className="file-help">BIN, ORI, HEX, FRF, ODX, TXT, CSV, LOG, ZIP - max 16 MB</small>
+        <small className="file-help">{service === "datalog_analysis" ? "CSV, LOG, TXT — max 16 MB" : "BIN, ORI, HEX, FRF, ODX, TXT, CSV, LOG, ZIP — max 16 MB"}</small>
         {file && <small className="file-selected">Selected: {file.name} ({(file.size/1024/1024).toFixed(2)} MB)</small>}
       </div>
       {visibleAddons.includes("diagnostics:datalog_analysis") && <div className="field">
