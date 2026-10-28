@@ -21,7 +21,13 @@ export async function POST(req: Request) {
   if ((!/^sk_(test|live)_/.test(secretKey)) || !webhookSecret.startsWith("whsec_") ||
       (process.env.VERCEL_ENV === "production" && !secretKey.startsWith("sk_live_")) ||
       (process.env.VERCEL_ENV === "preview" && !secretKey.startsWith("sk_test_"))) {
-    console.error("Stripe webhook configuration does not match this environment.");
+    console.error("Stripe webhook configuration does not match this environment.", {
+      deploymentEnvironment: process.env.VERCEL_ENV ?? "unknown",
+      apiKeyHasRecognisedPrefix: /^sk_(test|live)_/.test(secretKey),
+      apiKeyMatchesProduction: secretKey.startsWith("sk_live_"),
+      apiKeyMatchesPreview: secretKey.startsWith("sk_test_"),
+      webhookSecretHasExpectedPrefix: webhookSecret.startsWith("whsec_"),
+    });
     return NextResponse.json({ error: "Webhook is not configured for this environment." }, { status: 503 });
   }
 
