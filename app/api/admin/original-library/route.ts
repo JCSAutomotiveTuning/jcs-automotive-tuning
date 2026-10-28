@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { suggestFileIdentifiers } from "@/lib/file-identifier-suggestions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,7 +40,8 @@ export async function GET() {
     return { fileId: f.id, filename: f.original_filename, orderId: f.order_id,
       sizeBytes: f.size_bytes, scanStatus: f.scan_status, createdAt: f.created_at,
       hwId: m?.hw_id ?? null, swId: m?.sw_id ?? null,
-      category: defined ? "identified" : "undefined" };
+      category: defined ? "identified" : "undefined",
+      suggestion: defined || f.scan_status !== "clean" ? null : suggestFileIdentifiers(f.original_filename) };
   });
   items.sort((a,b) => (a.category === b.category
     ? ((a.hwId ?? "").localeCompare(b.hwId ?? "") || (a.swId ?? "").localeCompare(b.swId ?? "") || b.createdAt.localeCompare(a.createdAt))
