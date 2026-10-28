@@ -21,6 +21,11 @@ async function sms(to:string,body:string):Promise<string> {
  return typeof data.sid==="string"?data.sid:"accepted";
 }
 export async function GET(req:Request) {
+ // Temporarily disabled at the business owner's request.
+ // Do not claim queued events or send email/SMS until explicitly re-enabled.
+ void req;
+ return NextResponse.json({ disabled: true, processed: 0, sent: 0, failed: 0 });
+
  const secret=process.env.CRON_SECRET;
  if(!secret||req.headers.get("authorization")!==`Bearer ${secret}`)return NextResponse.json({error:"Unauthorized"},{status:401});
  const db=createAdminClient();const {data:claimed,error:claimError}=await db.rpc("jcs_claim_notifications",{p_limit:10});
