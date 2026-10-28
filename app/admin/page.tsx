@@ -37,6 +37,12 @@ const navigation = [
     icon: "⇧",
   },
   {
+    label: "Original File Library",
+    description: "Private HW/SW indexed customer originals and undefined queue",
+    href: "/admin/original-library",
+    icon: "▦",
+  },
+  {
     label: "Wallet & Credits",
     description: "Customer balances",
     href: "/admin/wallet",
