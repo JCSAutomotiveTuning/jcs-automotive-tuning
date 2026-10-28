@@ -12,6 +12,7 @@ type Order = {
   currency: string;
   status: string;
   payment_status: string;
+  checkout_session_id?: string | null;
   vehicle_make: string;
   vehicle_model: string;
   engine_code: string | null;
@@ -92,6 +93,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [refunding, setRefunding] = useState(false);
   const [finishedFile, setFinishedFile] = useState<File | null>(null);
   const [uploadingFinished, setUploadingFinished] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
@@ -162,6 +164,33 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
       setError(caught instanceof Error ? caught.message : "Unable to save the order.");
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function refundSelected() {
+    if (!selected || refunding || busy || selected.payment_status !== "paid" || !selected.checkout_session_id) return;
+    const orderId = selected.id;
+    if (!window.confirm(`Refund the full ${money(selected.amount_pence)} to the original payment method for order ${orderId.slice(0, 8)}? This cannot be undone.`)) return;
+    setRefunding(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await fetch("/api/admin/orders/refund", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ orderId, confirmation: "REFUND" }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error ?? "Refund was not confirmed. Check Stripe before retrying.");
+      }
+      setOrders((previous) => previous.map((order) => order.id === orderId
+        ? { ...order, payment_status: "refunded" } : order));
+      setSuccess(`Full refund submitted successfully. Stripe reference: ${result.refundId}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Refund failed.");
+    } finally {
+      setRefunding(false);
     }
   }
 
@@ -420,6 +449,20 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                     }}>{busy === "payment" ? "Requesting…" : "Request customer payment →"}</button>
                   </div>
                 </div>}
+
+                <div className="border-t border-white/[0.08] pt-5">
+                  <h3 className="text-base font-extrabold text-white">Refund payment</h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">Refund the full order value to the original Stripe payment method. Only verified, paid orders can be refunded. Each refund is recorded against its order.</p>
+                  {selected.payment_status === "refunded" ? (
+                    <p className="mt-3 text-sm font-semibold text-emerald-300">This payment has been refunded.</p>
+                  ) : selected.payment_status === "paid" && selected.checkout_session_id ? (
+                    <button type="button" className="mt-3 w-full rounded-xl border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-sm font-bold text-rose-200 hover:bg-rose-400/20 disabled:opacity-50" disabled={refunding || busy !== null} onClick={() => void refundSelected()}>
+                      {refunding ? "Processing refund..." : `Refund ${money(selected.amount_pence)} to customer`}
+                    </button>
+                  ) : (
+                    <p className="mt-3 text-xs text-amber-300">Refund unavailable: no verified paid Stripe checkout is linked to this order.</p>
+                  )}
+                </div>
 
                 {error && <Feedback message={error} error />}
                 {success && <Feedback message={success} />}
