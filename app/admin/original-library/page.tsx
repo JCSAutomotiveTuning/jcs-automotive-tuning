@@ -17,7 +17,22 @@ export default function OriginalLibrary() {
     setFiles(data.items);
     setEdit(Object.fromEntries(data.items.map((x:FileRow)=>[x.fileId,{hw:x.hwId||"",sw:x.swId||""}])));
   }
-  useEffect(()=>{load().catch(e=>setError(String(e.message||e)))},[]);
+  useEffect(()=>{
+    const controller = new AbortController();
+    void fetch("/api/admin/original-library", { cache:"no-store", signal:controller.signal })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load catalogue");
+        return data;
+      })
+      .then(data => {
+        if (controller.signal.aborted) return;
+        setFiles(data.items);
+        setEdit(Object.fromEntries(data.items.map((x:FileRow)=>[x.fileId,{hw:x.hwId||"",sw:x.swId||""}])));
+      })
+      .catch(e => { if (!controller.signal.aborted) setError(String(e.message||e)); });
+    return () => controller.abort();
+  },[]);
   const visible = useMemo(()=>files.filter(f=>{
     const matches = filter==="all" || f.category===filter;
     return matches && [f.filename,f.hwId||"",f.swId||"",f.orderId].join(" ").toLowerCase().includes(query.toLowerCase());
