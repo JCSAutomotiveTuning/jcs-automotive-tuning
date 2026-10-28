@@ -13,12 +13,11 @@ export type IdentifierSuggestion = {
 export function suggestFileIdentifiers(filename: string): IdentifierSuggestion {
   const base = filename.replace(/\.[^.]+$/, "");
   // Only accept clearly labelled identifiers; ambiguous part numbers stay Undefined.
-  const pattern = /(?:^|[\s_\-.])(?:HW|HARDWARE|SW|SOFTWARE)[\s_\-=:]*([A-Za-z0-9][A-Za-z0-9._/-]{1,79})/gi;
+  const pattern = /(?:^|[\\s_.-])(HW|HARDWARE|SW|SOFTWARE)[\\s_=:-]+([A-Za-z0-9]{2,80})(?=$|[\\s_.-])/gi;
   const matches: Record<string,string> = {};
   for (const match of base.matchAll(pattern)) {
-    const label = match[0].toUpperCase().match(/(?:HW|HARDWARE|SW|SOFTWARE)/)?.[0];
-    const key = label === "HW" || label === "HARDWARE" ? "hw" : "sw";
-    const value = match[1]?.replace(/[_.-]+$/, "").toUpperCase();
+    const key = /^(?:HW|HARDWARE)$/i.test(match[1]) ? "hw" : "sw";
+    const value = match[2]?.toUpperCase();
     if (value && !matches[key]) matches[key] = value;
   }
   return {
