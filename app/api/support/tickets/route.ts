@@ -82,6 +82,24 @@ export async function POST(request: Request) {
 
   const input = parsed.data;
 
+  if (input.orderId) {
+    const { data: linkedOrder, error: linkedOrderError } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("id", input.orderId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (linkedOrderError) {
+      console.error("Support order ownership check failed:", linkedOrderError.message);
+      return NextResponse.json({ error: "Could not verify linked order." }, { status: 503 });
+    }
+
+    if (!linkedOrder) {
+      return NextResponse.json({ error: "Linked order not found." }, { status: 404 });
+    }
+  }
+
   const { data: ticket, error: ticketError } = await supabase
     .from("support_tickets")
     .insert({
