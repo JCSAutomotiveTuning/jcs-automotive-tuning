@@ -110,6 +110,10 @@ export default function Login() {
             </button>
           </div>
 
+          <p style={{ textAlign: "right", margin: "2px 0 18px" }}>
+            <Link href="/forgot-password" className="text-sky-300">Forgot password?</Link>
+          </p>
+
           <button className="btn" type="submit" disabled={busy}>
             {busy ? "Signing in..." : "Sign in"}
           </button>
@@ -123,7 +127,7 @@ export default function Login() {
 
         <p>
           <small>
-            Need help accessing your account? Contact JCS Automotive Tuning.
+            Need help accessing your account? Use the password-reset link above or contact JCS Automotive Tuning.
           </small>
         </p>
 
