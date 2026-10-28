@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 type FileRow = { fileId: string; orderId: string; filename: string; sizeBytes: number; scanStatus: string;
-  createdAt: string; hwId: string|null; swId: string|null; category: "identified"|"undefined" };
+  createdAt: string; hwId: string|null; swId: string|null; category: "identified"|"undefined"; suggestion: { hwId:string|null;swId:string|null;source:string;needsReview:boolean }|null };
 export default function OriginalLibrary() {
   const [files,setFiles] = useState<FileRow[]>([]);
   const [error,setError] = useState("");
@@ -75,6 +75,12 @@ export default function OriginalLibrary() {
           <label>SW ID <input aria-label={`SW ID for ${f.filename}`} value={edit[f.fileId]?.sw||""} onChange={e=>setEdit(p=>({...p,[f.fileId]:{...(p[f.fileId]||{hw:"",sw:""}),sw:e.target.value}}))} style={{display:"block",color:"#111",padding:10,borderRadius:6}}/></label>
         </div>
         <div style={{display:"flex",gap:12,marginTop:14,flexWrap:"wrap"}}>
+          {f.category==="undefined" && f.suggestion?.hwId && f.suggestion?.swId && <button
+            type="button" disabled={busy===f.fileId}
+            onClick={()=>setEdit(prev=>({...prev,[f.fileId]:{hw:f.suggestion!.hwId!,sw:f.suggestion!.swId!}}))}
+            style={{padding:"9px 15px",border:"1px solid #8ed9ff",borderRadius:7,color:"#8ed9ff"}}>
+            Suggest HW {f.suggestion.hwId} / SW {f.suggestion.swId} (review first)
+          </button>}
           <button disabled={busy===f.fileId || f.scanStatus!=="clean"} onClick={()=>save(f.fileId)} style={{padding:"9px 15px",background:"#8ed9ff",color:"#102231",borderRadius:7,fontWeight:700}}>Save identifiers</button>
           <button disabled={busy===f.fileId || f.scanStatus!=="clean"} onClick={()=>save(f.fileId,true)} style={{padding:"9px 15px",border:"1px solid #6a8193",borderRadius:7}}>Move to Undefined</button>
           {f.scanStatus==="clean" && <a href={`/api/admin/files/${f.fileId}/download`} onClick={async e=>{e.preventDefault();try{const r=await fetch(`/api/admin/files/${f.fileId}/download`);if(!r.ok)throw Error("Download unavailable");const d=await r.json();window.open(d.url,"_blank","noopener,noreferrer");}catch{setError("Could not open original file")}}} style={{padding:"9px 15px",textDecoration:"underline"}}>Secure download</a>}
