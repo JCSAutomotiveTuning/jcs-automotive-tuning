@@ -40,7 +40,7 @@ describe("upload and privileged access isolation (mocked, no storage writes)", (
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ orderId, fileName: "original.bin", fileSize: 128, contentType: "application/octet-stream" }),
     }));
-    expect(response.status).toBe(401);
+    expect(response?.status).toBe(401);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 
@@ -50,7 +50,7 @@ describe("upload and privileged access isolation (mocked, no storage writes)", (
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ orderId, fileName: "original.bin", fileSize: 128, contentType: "application/octet-stream" }),
     }));
-    expect(response.status).toBe(404);
+    expect(response?.status).toBe(404);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 
@@ -63,21 +63,21 @@ describe("upload and privileged access isolation (mocked, no storage writes)", (
         fileName: "original.bin", fileSize: 128,
       }),
     }));
-    expect(response.status).toBe(403);
+    expect(response?.status).toBe(403);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 
   it("rejects non-admins from the original-file library", async () => {
     const { GET } = await import("@/app/api/admin/original-library/route");
     const response = await GET();
-    expect(response.status).toBe(403);
+    expect(response?.status).toBe(403);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 
   it("rejects customer accounts from technician order listings", async () => {
     const { GET } = await import("@/app/api/staff/orders/route");
     const response = await GET();
-    expect(response.status).toBe(403);
+    expect(response?.status).toBe(403);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 });
