@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
@@ -13,6 +14,7 @@ export default function ForgotPasswordPage() {
     event: React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+    if (loading) return;
     setMessage("");
     setLoading(true);
 
@@ -25,12 +27,10 @@ export default function ForgotPasswordPage() {
         });
 
       if (error) {
-        console.error("Password reset error:", error.message);
-        setMessage("Unable to send the reset email. Please try again.");
+        console.error("Password recovery request failed:", error.message);
+        setMessage("Could not process the request right now. Please try again shortly.");
       } else {
-        setMessage(
-          "If an account exists for that email, a reset link will be sent. Please check your inbox."
-        );
+        setMessage("If an account exists for that email, a password reset link will be sent. Check your inbox and spam folder.");
       }
     } catch (error) {
       console.error("Password reset failed:", error);
@@ -41,50 +41,30 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md p-6">
-      <h1 className="mb-2 text-2xl font-bold">
-        Reset your password
-      </h1>
-
-      <p className="mb-6 text-gray-600">
-        Enter the email address associated with your account.
-      </p>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="email"
-            className="mb-1 block font-medium"
-          >
-            Email address
-          </label>
-
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            className="w-full rounded border p-3"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-blue-600 p-3 font-semibold text-white disabled:opacity-50"
-        >
-          {loading ? "Sending..." : "Send reset link"}
-        </button>
-      </form>
-
-      {message && (
-        <p role="status" className="mt-4 text-sm">
-          {message}
-        </p>
-      )}
+    <main className="wrap">
+      <nav className="nav">
+        <Link className="brand" href="/">JCS <span>AUTOMOTIVE TUNING</span></Link>
+        <Link href="/login">Back to sign in</Link>
+      </nav>
+      <section className="card" style={{ maxWidth: 520, margin: "45px auto" }}>
+        <div className="eyebrow">Account recovery</div>
+        <h1 style={{ fontSize: 36 }}>Forgot your password?</h1>
+        <p>Enter your registered email address. If an account exists, we’ll email you a secure reset link.</p>
+        <form onSubmit={handleSubmit}>
+          <div className="field">
+            <label htmlFor="recovery-email">Email address</label>
+            <input id="recovery-email" name="email" type="email" autoComplete="email"
+              autoCapitalize="none" spellCheck={false} maxLength={254} required
+              value={email} onChange={(event) => setEmail(event.target.value)}
+              disabled={loading} placeholder="you@example.com" />
+          </div>
+          <button type="submit" className="btn" disabled={loading}>
+            {loading ? "Sending reset link..." : "Email password reset link"}
+          </button>
+        </form>
+        {message && <p role="status" aria-live="polite">{message}</p>}
+        <p><small>Remembered your password? <Link href="/login">Sign in</Link>.</small></p>
+      </section>
     </main>
   );
 }
