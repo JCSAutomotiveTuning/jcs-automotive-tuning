@@ -23,7 +23,7 @@ async function sms(to:string,body:string):Promise<string> {
 export async function GET(req:Request) {
  const secret=process.env.CRON_SECRET;
  if(!secret||req.headers.get("authorization")!==`Bearer ${secret}`)return NextResponse.json({error:"Unauthorized"},{status:401});
- const db=createAdminClient();const {data:claimed,error:claimError}=await db.rpc("jcs_claim_notifications",{p_limit:10});
+ // Do not dequeue events when the outbound email provider is not configured.\n // Production must have a verified Resend sender before enabling this schedule.\n if (!process.env.RESEND_API_KEY || !process.env.NOTIFICATION_FROM_EMAIL) {\n  console.error("Notification email provider is not configured for this environment.");\n  return NextResponse.json({ error: "Notification delivery is not configured." }, { status: 503 });\n }\n const db=createAdminClient();const {data:claimed,error:claimError}=await db.rpc("jcs_claim_notifications",{p_limit:10});
  if(claimError){console.error("Notification claim failed",claimError.message);return NextResponse.json({error:"Queue unavailable"},{status:500});}
  let sent=0,failed=0;
  for(const event of (claimed??[]) as Event[]) {
