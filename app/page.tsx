@@ -40,7 +40,7 @@ const services = [
   },
   {
     name: "Custom DSG / TCU Tuning",
-    price: "From £180",
+    price: "From £195",
     desc: "Custom transmission calibration for supported control units and requirements.",
     tag: "CUSTOM TCU",
   },
