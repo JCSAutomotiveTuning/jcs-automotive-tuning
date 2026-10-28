@@ -52,6 +52,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Stripe payment does not match this order." }, { status: 409 });
     }
     const intentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent.id;
+    // A full refund must never ignore prior partial or pending refunds.
+    // Stripe enforces the total too, but fail closed before attempting a duplicate charge reversal.
+    const prior = await stripe.refunds.list({ payment_intent: intentId, limit: 100 });
+    if (prior.has_more || prior.data.length > 0) {
+      return NextResponse.json({
+        error: "A refund already exists for this payment. Review Stripe refund history before any further action.",
+      }, { status: 409 });
+    }
     const refund = await stripe.refunds.create({
       payment_intent: intentId,
       amount: order.amount_pence,
