@@ -201,7 +201,18 @@ export async function POST(req: Request) {
     session.metadata?.type !== "wallet_topup" ||
     session.metadata?.top_up_pence !== "2000"
   ) {
-    return NextResponse.json({ received: true });
+    // A paid Checkout session with unknown or malformed metadata must not be
+    // silently acknowledged: otherwise Stripe stops retrying while a customer
+    // may have paid without receiving their service or wallet credit.
+    console.error("Unrecognised paid Checkout session requires reconciliation:", {
+      sessionId: session.id,
+      paymentType: session.metadata?.type ?? null,
+      eventType: event.type,
+    });
+    return NextResponse.json(
+      { error: "Paid checkout requires reconciliation." },
+      { status: 409 }
+    );
   }
 
   const userId = session.metadata?.user_id;
