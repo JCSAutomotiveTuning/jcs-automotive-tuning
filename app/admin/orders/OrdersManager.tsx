@@ -94,6 +94,8 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   const [success, setSuccess] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [refunding, setRefunding] = useState(false);
+  const [refundHistory, setRefundHistory] = useState<{ refunds: { id: string; amountPence: number; status: string; created: number }[]; refundablePence: number; verifiedPayment: boolean } | null>(null);
+  const [refundHistoryError, setRefundHistoryError] = useState("");
   const [finishedFile, setFinishedFile] = useState<File | null>(null);
   const [uploadingFinished, setUploadingFinished] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
@@ -125,6 +127,8 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
     setSelectedId(order.id);
     setFinishedFile(null);
     setUploadMessage("");
+    setRefundHistory(null);
+    setRefundHistoryError("");
     setDraftStatus(order.status);
     setDraftNotes(order.admin_notes ?? "");
     setQuotePounds(order.amount_pence > 0 ? (order.amount_pence / 100).toFixed(2) : "");
@@ -167,6 +171,21 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
     }
   }
 
+  async function loadRefundHistory(orderId: string) {
+    setRefundHistory(null);
+    setRefundHistoryError("");
+    try {
+      const response = await fetch(`/api/admin/orders/refund-history?orderId=${encodeURIComponent(orderId)}`, { credentials: "same-origin", cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || !Array.isArray(data.refunds)) {
+        throw new Error(data?.error ?? "Unable to load refund history.");
+      }
+      setRefundHistory(data);
+    } catch (error) {
+      setRefundHistoryError(error instanceof Error ? error.message : "Unable to load refund history.");
+    }
+  }
+
   async function refundSelected() {
     if (!selected || refunding || busy || selected.payment_status !== "paid" || !selected.checkout_session_id) return;
     const orderId = selected.id;
@@ -187,6 +206,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
       setOrders((previous) => previous.map((order) => order.id === orderId
         ? { ...order, payment_status: "refunded" } : order));
       setSuccess(`Full refund submitted successfully. Stripe reference: ${result.refundId}`);
+      void loadRefundHistory(orderId);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Refund failed.");
     } finally {
@@ -453,6 +473,22 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                 <div className="border-t border-white/[0.08] pt-5">
                   <h3 className="text-base font-extrabold text-white">Refund payment</h3>
                   <p className="mt-1 text-xs leading-5 text-slate-400">Refund the full order value to the original Stripe payment method. Only verified, paid orders can be refunded. Each refund is recorded against its order.</p>
+                  <button type="button" className={`${secondaryButton} mt-3`} onClick={() => void loadRefundHistory(selected.id)} disabled={refunding}>
+                    Check Stripe refund history
+                  </button>
+                  {refundHistoryError && <p className="mt-2 text-xs text-rose-300">{refundHistoryError}</p>}
+                  {refundHistory && (
+                    <div className="mt-3 space-y-2 text-xs text-slate-300">
+                      <p>{refundHistory.verifiedPayment ? `Remaining refundable: ${money(refundHistory.refundablePence)}` : "No verified Stripe order payment linked."}</p>
+                      {refundHistory.refunds.map((refund) => (
+                        <div key={refund.id} className="rounded-lg border border-white/10 p-2">
+                          {money(refund.amountPence)} · {refund.status} · {new Date(refund.created * 1000).toLocaleDateString("en-GB")}
+                          <div className="break-all font-mono text-[10px] text-slate-500">{refund.id}</div>
+                        </div>
+                      ))}
+                      {refundHistory.refunds.length === 0 && <p>No Stripe refunds for this order.</p>}
+                    </div>
+                  )}
                   {selected.payment_status === "refunded" ? (
                     <p className="mt-3 text-sm font-semibold text-emerald-300">This payment has been refunded.</p>
                   ) : selected.payment_status === "paid" && selected.checkout_session_id ? (
