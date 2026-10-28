@@ -21,9 +21,9 @@ async function sms(to:string,body:string):Promise<string> {
  return typeof data.sid==="string"?data.sid:"accepted";
 }
 export async function GET(req:Request) {
- // Notifications are paused on hosted deployments at the owner's request.
- // Preserve the queue and avoid invoking Resend or Twilio.
- if (process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview") {
+ // Notifications are paused in all application environments at the owner's request.
+ // Preserve the queue; only test runners may exercise the mocked worker.
+ if (process.env.NODE_ENV !== "test") {
   return NextResponse.json({ disabled: true, processed: 0, sent: 0, failed: 0 });
  }
 
