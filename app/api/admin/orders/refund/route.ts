@@ -25,8 +25,8 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Confirm the full refund." }, { status: 400 });
 
   const secret = process.env.STRIPE_SECRET_KEY;
-  if (!secret || !/^sk_(live|test)_/.test(secret) ||
-      (process.env.VERCEL_ENV === "production" && !secret.startsWith("sk_live_"))) {
+  if (!secret || !/^(sk|rk)_(live|test)_/.test(secret) ||
+      (process.env.VERCEL_ENV === "production" && !/^(sk|rk)_live_/.test(secret))) {
     return NextResponse.json({ error: "Stripe is not configured for this environment." }, { status: 503 });
   }
 
