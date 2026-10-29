@@ -37,7 +37,12 @@ const updateSchema = z
     (data) => {
       const action = data.action ?? "update";
 
-      if (action === "save_quote") {
+      if (action === "save_quote" && (existing.deposit_pence ?? 0) > 0 &&
+      (quoteAmountPence ?? 0) <= existing.deposit_pence) {
+      return NextResponse.json({ error: "The final quoted total must exceed the £20 wallet deposit. Contact support for a fully deposit-covered order." }, { status: 409 });
+    }
+
+    if (action === "save_quote") {
         return data.quoteAmountPence !== undefined;
       }
 
@@ -192,7 +197,7 @@ export async function PATCH(req: Request) {
     const { data: existing, error: lookupError } = await admin
       .from("orders")
       .select(
-        "id,service_code,amount_pence,currency,status,payment_status,admin_notes,customer_notes"
+        "id,service_code,amount_pence,deposit_pence,currency,status,payment_status,admin_notes,customer_notes"
       )
       .eq("id", orderId)
       .maybeSingle();
