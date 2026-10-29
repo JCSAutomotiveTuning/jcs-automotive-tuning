@@ -59,6 +59,32 @@ export async function POST(req: Request) {
   const customerNotes=`${v.notes}${fuelText}${addonsText}${dtcText}${pricingText}`.trim();
   if(customerNotes.length>3000) return NextResponse.json({error:"Please shorten notes or reduce add-on selections."},{status:400});
 
+  if (process.env.JCS_WALLET_DEPOSITS_ENABLED === "true") {
+    const admin = createAdminClient();
+    const { data: orderId, error: depositError } = await admin.rpc("create_wallet_deposit_order", {
+      p_user_id: user.id, p_service_code: v.serviceCode, p_service_name: service.name,
+      p_amount_pence: quoteRequired ? 0 : service.pricePence + addonTotal,
+      p_vehicle_make: v.vehicleMake, p_vehicle_model: v.vehicleModel,
+      p_engine_code: v.engineCode || null, p_software_id: v.softwareId || null,
+      p_customer_notes: customerNotes || null,
+    });
+    if (depositError || !orderId) {
+      const message = depositError?.message ?? "";
+      if (message.includes("Insufficient wallet credit"))
+        return NextResponse.json({ error: "Add at least £20 wallet credit before submitting a job." }, { status: 402 });
+      if (message.includes("Active order limit"))
+        return NextResponse.json({ error: "You can have at most three open jobs. Finish an existing job before submitting another." }, { status: 429 });
+      console.error("Deposit-backed order submission failed:", depositError?.message);
+      return NextResponse.json({ error: "Could not reserve your £20 deposit. No new order was created." }, { status: 503 });
+    }
+    return NextResponse.json({
+      order: { id: orderId, status: "awaiting_review", payment_status: "unpaid",
+        amount_pence: quoteRequired ? 0 : service.pricePence + addonTotal, service_code: v.serviceCode },
+      quoteRequired, depositPence: 2000,
+      message: "Job submitted. Your £20 wallet deposit is credited toward the final service price.",
+    });
+  }
+
   const {data:order,error}=await createAdminClient().from("orders").insert({
     user_id:user.id,
     service_code:v.serviceCode,
