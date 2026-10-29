@@ -38,8 +38,8 @@ const updateSchema = z
       const action = data.action ?? "update";
 
       if (action === "save_quote" && (existing.deposit_pence ?? 0) > 0 &&
-      (quoteAmountPence ?? 0) <= existing.deposit_pence) {
-      return NextResponse.json({ error: "The final quoted total must exceed the £20 wallet deposit. Contact support for a fully deposit-covered order." }, { status: 409 });
+      (quoteAmountPence ?? 0) < existing.deposit_pence) {
+      return NextResponse.json({ error: "The final quoted total must be at least the £20 wallet deposit. Contact support for a fully deposit-covered order." }, { status: 409 });
     }
 
     if (action === "save_quote") {
@@ -344,6 +344,20 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ order: updated });
     }
 
+    if (action === "request_payment" && existing.deposit_pence === 2000 &&
+      existing.amount_pence === 2000) {
+      const { data: settled, error: settleError } = await admin.rpc("settle_fully_deposit_paid_order", {
+        p_order_id: orderId, p_user_id: auth.user.id,
+      });
+      if (settleError || !["settled", "already_settled"].includes(settled)) {
+        console.error("Deposit-only settlement failed:", settleError?.message, settled);
+        return NextResponse.json({ error: "Could not reconcile the fully funded £20 order." }, { status: 409 });
+      }
+      const { data: fullyPaid, error: fullError } = await admin.from("orders")
+        .select("id,amount_pence,status,payment_status,admin_notes,updated_at").eq("id",orderId).single();
+      if (fullError || !fullyPaid) return NextResponse.json({ error: "Settlement succeeded but order refresh failed." }, { status: 500 });
+      return NextResponse.json({ order: fullyPaid });
+    }
     if (action === "request_payment") {
       if (existing.status !== "awaiting_review") {
         return NextResponse.json(
