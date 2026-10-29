@@ -37,6 +37,17 @@ export default function OriginalLibrary() {
     const matches = filter==="all" || f.category===filter;
     return matches && [f.filename,f.hwId||"",f.swId||"",f.orderId].join(" ").toLowerCase().includes(query.toLowerCase());
   }),[files,filter,query]);
+  async function removeFromLibrary(file: FileRow) {
+    if (busy || !window.confirm(`Remove "${file.filename}" from the Original ECU/TCU library?\n\nThe customer order and stored original file will be preserved.`)) return;
+    setBusy(file.fileId); setError("");
+    try {
+      const response = await fetch("/api/admin/original-library", { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({fileId:file.fileId}) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not remove library entry");
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not remove entry"); }
+    finally { setBusy(""); }
+  }
   async function save(fileId:string,clear=false) {
     setBusy(fileId);setError("");
     try {
@@ -83,6 +94,7 @@ export default function OriginalLibrary() {
           </button>}
           <button disabled={busy===f.fileId || f.scanStatus!=="clean"} onClick={()=>save(f.fileId)} style={{padding:"9px 15px",background:"#8ed9ff",color:"#102231",borderRadius:7,fontWeight:700}}>Save identifiers</button>
           <button disabled={busy===f.fileId || f.scanStatus!=="clean"} onClick={()=>save(f.fileId,true)} style={{padding:"9px 15px",border:"1px solid #6a8193",borderRadius:7}}>Move to Undefined</button>
+          <button type="button" disabled={Boolean(busy)} onClick={()=>void removeFromLibrary(f)} style={{padding:"9px 15px",border:"1px solid #f87171",borderRadius:7,color:"#fca5a5"}}>Delete from library</button>
           {f.scanStatus==="clean" && <a href={`/api/admin/files/${f.fileId}/download`} onClick={async e=>{e.preventDefault();try{const r=await fetch(`/api/admin/files/${f.fileId}/download`);if(!r.ok)throw Error("Download unavailable");const d=await r.json();window.open(d.url,"_blank","noopener,noreferrer");}catch{setError("Could not open original file")}}} style={{padding:"9px 15px",textDecoration:"underline"}}>Secure download</a>}
         </div>
       </article>)}
