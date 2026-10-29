@@ -97,3 +97,49 @@ begin
 end $$;
 revoke all on function public.credit_deposit_wallet_topup(uuid,text,integer) from public,anon,authenticated;
 grant execute on function public.credit_deposit_wallet_topup(uuid,text,integer) to service_role;
+
+-- Fully deposit-covered £20 jobs need no second Stripe charge.
+create or replace function public.settle_fully_deposit_paid_order(p_order_id uuid,p_user_id uuid)
+returns text language plpgsql security definer set search_path = '' as $$
+declare v_order public.orders%rowtype;
+begin
+ if auth.role() <> 'service_role' then raise exception 'Service role required'; end if;
+ select * into v_order from public.orders where id=p_order_id for update;
+ if not found then return 'not_found'; end if;
+ if v_order.status='paid' and v_order.payment_status='paid' then return 'already_settled'; end if;
+ if v_order.status<>'awaiting_review' or v_order.payment_status<>'unpaid'
+   or v_order.amount_pence<>2000 or v_order.deposit_pence<>2000 then return 'not_eligible'; end if;
+ if not exists(select 1 from public.deposit_wallet_events where order_id=p_order_id and user_id=v_order.user_id
+      and transaction_type='order_deposit' and amount_pence=-2000) then return 'missing_deposit'; end if;
+ if exists(select 1 from public.order_files where order_id=p_order_id and scan_status<>'clean') then return 'files_not_clean'; end if;
+ update public.orders set status='paid',payment_status='paid',updated_at=now() where id=p_order_id;
+ insert into public.order_audit(order_id,actor_id,action,details)
+ values(p_order_id,p_user_id,'admin_order_updated',jsonb_build_object('action_type','wallet_deposit_fully_settled','amount_pence',2000));
+ return 'settled';
+end $$;
+revoke all on function public.settle_fully_deposit_paid_order(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.settle_fully_deposit_paid_order(uuid,uuid) to service_role;
+
+create unique index if not exists deposit_wallet_event_release_once on public.deposit_wallet_events(order_id)
+ where transaction_type='deposit_release';
+create or replace function public.release_cancelled_order_deposit(p_order_id uuid)
+returns text language plpgsql security definer set search_path = '' as $$
+declare v_order public.orders%rowtype; v_event uuid;
+begin
+ if auth.role() <> 'service_role' then raise exception 'Service role required'; end if;
+ select * into v_order from public.orders where id=p_order_id for update;
+ if not found then return 'not_found'; end if;
+ if exists(select 1 from public.deposit_wallet_events where order_id=p_order_id and transaction_type='deposit_release')
+ then return 'already_released'; end if;
+ if v_order.status not in ('cancelled','failed') or v_order.payment_status<>'unpaid'
+    or v_order.deposit_pence<>2000 then return 'not_eligible'; end if;
+ if not exists(select 1 from public.deposit_wallet_events where order_id=p_order_id and transaction_type='order_deposit'
+    and user_id=v_order.user_id and amount_pence=-2000) then return 'missing_deposit'; end if;
+ insert into public.deposit_wallet_events(user_id,amount_pence,transaction_type,order_id,description)
+ values(v_order.user_id,2000,'deposit_release',p_order_id,'Returned deposit for cancelled order')
+ returning id into v_event;
+ update public.deposit_wallets set balance_pence=balance_pence+2000,updated_at=now() where user_id=v_order.user_id;
+ return 'released';
+end $$;
+revoke all on function public.release_cancelled_order_deposit(uuid) from public,anon,authenticated;
+grant execute on function public.release_cancelled_order_deposit(uuid) to service_role;
