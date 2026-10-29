@@ -103,7 +103,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     supabase
       .from("orders")
       .select(
-        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,order_files(id,scan_status)"
+        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,admin_notes,order_files(id,scan_status)"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -124,6 +124,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     console.error("Dashboard order lookup failed:", ordersError.message);
   }
 
+  const visibleOrders = (orders ?? []).filter(o => !o.admin_notes?.includes("[LAUNCH TEST ARCHIVED 2026-10-29]"));
   const balancePence = wallet?.balance_pence ?? 0;
 
   return (
@@ -166,9 +167,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <div className="jcs-workspace-summary">
           <div className="jcs-summary-label">Your workspace</div>
           <div className="jcs-summary-grid">
-            <div><strong>{orders?.length ?? 0}</strong><span>Recent orders</span></div>
-            <div><strong>{orders?.filter(o=>!["completed","cancelled","failed"].includes(o.status)).length ?? 0}</strong><span>Active jobs</span></div>
-            <div><strong>{orders?.filter(o=>o.status==="completed").length ?? 0}</strong><span>Completed</span></div>
+            <div><strong>{visibleOrders.length}</strong><span>Recent orders</span></div>
+            <div><strong>{visibleOrders.filter(o=>!["completed","cancelled","failed"].includes(o.status)).length ?? 0}</strong><span>Active jobs</span></div>
+            <div><strong>{visibleOrders.filter(o=>o.status==="completed").length ?? 0}</strong><span>Completed</span></div>
             <div><strong><MaskedAmount>{formatPrice(balancePence,"GBP")}</MaskedAmount></strong><span>Wallet balance</span></div>
           </div>
           <p>Orders shown: latest 50. Wallet and payment details are available below.</p>
@@ -184,11 +185,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <section id="order-history" className="card" style={{scrollMarginTop:24}}>
           <h2>Order history</h2>
 
-          {!orders?.length ? (
+          {!visibleOrders.length ? (
             <p>No orders yet. Submit your first job to get started.</p>
           ) : (
             <div className="stack">
-              {orders.map((o) => {
+              {visibleOrders.map((o) => {
                 const progress = orderStatus[o.status] ?? {
                   label: "Status update",
                   detail: "Your order status has been updated.",

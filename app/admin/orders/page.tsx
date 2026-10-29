@@ -70,7 +70,7 @@ export default async function AdminOrdersPage() {
     }
   }
 
-  const rows = (orders ?? []).map((order) => ({
+  const rows = (orders ?? []).filter((order) => !order.admin_notes?.includes("[LAUNCH TEST ARCHIVED 2026-10-29]")).map((order) => ({
     ...order,
     customer_email: emailByUserId[order.user_id] ?? "Unknown customer",
   }));
