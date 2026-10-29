@@ -2,12 +2,10 @@
 // A valid Supabase ADMIN account is required. No service-role key is used on this machine.
 // Uploaded files remain untrusted and unavailable for download until the scanner reports clean.
 import { createClient } from "@supabase/supabase-js";
-import { spawnSync } from "node:child_process";
-import { randomUUID, createHash } from "node:crypto";
+import { createConnection } from "node:net";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { writeFile, unlink } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 
 if (existsSync(".env.local") && typeof process.loadEnvFile === "function") {
   process.loadEnvFile(resolve(".env.local"));
@@ -18,7 +16,8 @@ const supabaseUrl = process.env.JCS_SCAN_SUPABASE_URL || process.env.NEXT_PUBLIC
 const anonKey = process.env.JCS_SCAN_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const email = process.env.JCS_SCAN_EMAIL;
 const password = process.env.JCS_SCAN_PASSWORD;
-const clamscan = process.env.JCS_CLAMSCAN_PATH || "clamscan";
+const clamHost = "127.0.0.1";
+const clamPort = 3310;
 const expectedProject = "tpvsebxdrluadefhboez";
 
 if (!portal.startsWith("https://") || !supabaseUrl ||
@@ -68,61 +67,77 @@ async function api(method, body) {
 }
 
 
-const CLAM_OPTIONS = [
-  "--stdout", "--alert-encrypted=yes", "--alert-exceeds-max=yes",
-  "--max-filesize=17M", "--max-scansize=128M",
-];
-// Do not expose the admin password or other application secrets to ClamAV.
-const engineEnv = Object.fromEntries([
-  "PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "HOME", "USERPROFILE",
-  "APPDATA", "LOCALAPPDATA", "ProgramData", "LD_LIBRARY_PATH",
-].filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]));
-
-function scanLocal(path) {
-  const result = spawnSync(clamscan, [...CLAM_OPTIONS, path], {
-    encoding: "utf8", windowsHide: true, timeout: 180000,
-    maxBuffer: 1024 * 1024, env: engineEnv,
+// Use local clamd INSTREAM: never write untrusted content or EICAR to disk.
+// Only a complete, explicitly clean reply is allowed to release a file.
+function scanBytes(bytes) {
+  return new Promise((resolveScan) => {
+    if (!Buffer.isBuffer(bytes) || bytes.length === 0 || bytes.length > 16 * 1024 * 1024) {
+      resolveScan("error");
+      return;
+    }
+    const socket = createConnection({ host: clamHost, port: clamPort });
+    let settled = false;
+    let response = "";
+    const finish = (verdict) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolveScan(verdict);
+    };
+    socket.setTimeout(45000, () => finish("error"));
+    socket.on("error", () => finish("error"));
+    socket.on("close", () => { if (!settled) finish("error"); });
+    socket.on("data", (data) => {
+      response += data.toString("utf8");
+      if (response.length > 4096) return finish("error");
+      const terminator = response.indexOf("\0");
+      if (terminator < 0) return;
+      const line = response.slice(0, terminator);
+      if (terminator !== response.length - 1) return finish("error");
+      if (/^stream: .+ FOUND$/.test(line)) return finish("blocked");
+      if (line === "stream: OK") return finish("clean");
+      return finish("error");
+    });
+    socket.on("connect", () => {
+      const command = Buffer.from("zINSTREAM\0", "ascii");
+      const length = Buffer.alloc(4);
+      length.writeUInt32BE(bytes.length);
+      const end = Buffer.alloc(4);
+      socket.write(command);
+      socket.write(length);
+      socket.write(bytes);
+      socket.write(end);
+    });
   });
-  const summary = [result.stdout || "", result.stderr || ""].join("\n");
-  const signatures = Number(summary.match(/Known viruses:\s*(\d+)/i)?.[1] || 0);
-  if (result.error || signatures < 1 || !/Scanned files:\s*[1-9]/i.test(summary)) return "error";
-  if (result.status === 0 && /Infected files:\s*0/i.test(summary)) return "clean";
-  if (result.status === 1 && /Infected files:\s*[1-9]/i.test(summary)) return "blocked";
-  return "error";
 }
 
 async function selfTest() {
-  const temporary = join(tmpdir(), "jcs-clamav-eicar-" + randomUUID());
   const marker = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-  await writeFile(temporary, Buffer.from(marker, "ascii"), { flag: "wx", mode: 0o600 });
-  try {
-    if (scanLocal(temporary) !== "blocked") {
-      throw new Error("ClamAV EICAR self-test failed. Scanner will not process customer files.");
-    }
-  } finally {
-    await unlink(temporary).catch(() => {});
+  if (await scanBytes(Buffer.from(marker, "ascii")) !== "blocked") {
+    throw new Error("ClamAV EICAR INSTREAM self-test failed. Scanner will not process customer files.");
   }
-  console.log("PASS: ClamAV EICAR self-test");
+  if (await scanBytes(Buffer.from("JCS clean scan startup verification", "utf8")) !== "clean") {
+    throw new Error("ClamAV clean INSTREAM self-test failed. Scanner will not process customer files.");
+  }
+  console.log("PASS: ClamAV INSTREAM EICAR and clean-file self-tests");
 }
 
 async function scanFile(file, signedUrl) {
-  const name = join(tmpdir(), "jcs-clamav-" + randomUUID() + ".scan");
-  try {
-    const r = await fetch(signedUrl, { signal: AbortSignal.timeout(90000), cache: "no-store" });
-    if (!r.ok) throw new Error("Signed file download failed (HTTP " + r.status + ")");
-    const bytes = Buffer.from(await r.arrayBuffer());
-    if (bytes.length !== file.sizeBytes || bytes.length === 0 || bytes.length > 16 * 1024 * 1024) {
-      throw new Error("Downloaded file size does not match database metadata");
-    }
-    const sha256 = createHash("sha256").update(bytes).digest("hex");
-    await writeFile(name, bytes, { flag: "wx", mode: 0o600 });
-    const verdict = scanLocal(name);
-    // Scanner errors or missing signature databases NEVER result in a clean verdict.
-    await api("POST", { fileId: file.id, kind: file.kind, verdict, sha256 });
-    console.log(new Date().toISOString(), file.kind, file.id.slice(0, 8), verdict);
-  } finally {
-    await unlink(name).catch(() => {});
+  const r = await fetch(signedUrl, { signal: AbortSignal.timeout(90000), cache: "no-store" });
+  if (!r.ok) throw new Error("Signed file download failed (HTTP " + r.status + ")");
+  const size = Number(r.headers.get("content-length"));
+  if (Number.isFinite(size) && size > 16 * 1024 * 1024) {
+    throw new Error("Downloaded file exceeds 16 MB");
   }
+  const bytes = Buffer.from(await r.arrayBuffer());
+  if (bytes.length !== file.sizeBytes || bytes.length === 0 || bytes.length > 16 * 1024 * 1024) {
+    throw new Error("Downloaded file size does not match database metadata");
+  }
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const verdict = await scanBytes(bytes);
+  // Any malformed reply, timeout or daemon failure is recorded as error, never clean.
+  await api("POST", { fileId: file.id, kind: file.kind, verdict, sha256 });
+  console.log(new Date().toISOString(), file.kind, file.id.slice(0, 8), verdict);
 }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
