@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
     const admin = createAdminClient();
     const { data: order, error: orderError } = await admin.from("orders")
-      .select("id,user_id,service_code,service_name,amount_pence,currency,status,payment_status,checkout_session_id,checkout_attempt_id,customer_notes")
+      .select("id,user_id,service_code,service_name,amount_pence,deposit_pence,currency,status,payment_status,checkout_session_id,checkout_attempt_id,customer_notes")
       .eq("id", orderId).eq("user_id", user.id).maybeSingle();
     if (orderError) {
       console.error("Order checkout lookup failed:", orderError.message);
@@ -53,6 +53,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "This order does not have a valid payment amount." }, { status: 400 });
     }
 
+    const remainingPence = order.amount_pence - (order.deposit_pence ?? 0);
+    if (!Number.isSafeInteger(remainingPence) || remainingPence <= 0) {
+      return NextResponse.json({ error: "This order has no remaining Stripe balance. Request manual account reconciliation." }, { status: 409 });
+    }
     // Do not take payment for a tuning file which cannot yet be safely inspected.
     // A customer cannot add files once an order leaves awaiting_review.
     const { data: inputFiles, error: inputError } = await admin.from("order_files")
@@ -89,7 +93,7 @@ export async function POST(req: Request) {
       if (existing.status === "open" && existing.payment_status === "unpaid" && existing.url &&
           existing.metadata?.type === "order_payment" && existing.metadata.order_id === order.id &&
           existing.metadata.user_id === user.id && existing.client_reference_id === user.id &&
-          existing.currency === "gbp" && existing.amount_total === order.amount_pence) {
+          existing.currency === "gbp" && existing.amount_total === remainingPence) {
         return NextResponse.json({ url: existing.url });
       }
       return NextResponse.json({ error: "Legacy checkout needs manual reconciliation." }, { status: 409 });
@@ -113,7 +117,7 @@ export async function POST(req: Request) {
         existing.metadata.order_id === order.id && existing.metadata.user_id === user.id &&
         existing.metadata.checkout_attempt_id === attempt.attempt_id &&
         existing.client_reference_id === user.id && existing.currency === "gbp" &&
-        existing.amount_total === order.amount_pence;
+        existing.amount_total === remainingPence;
       if (!matches) {
         return NextResponse.json({ error: "Checkout reference mismatch. Manual reconciliation required." }, { status: 409 });
       }
@@ -146,10 +150,10 @@ export async function POST(req: Request) {
       line_items: [{
         quantity: 1,
         price_data: {
-          currency: "gbp", unit_amount: order.amount_pence,
+          currency: "gbp", unit_amount: remainingPence,
           product_data: {
             name: order.service_name,
-            description: `JCS Automotive Tuning order ${order.id.slice(0, 8)}`,
+            description: `JCS Automotive Tuning order ${order.id.slice(0, 8)}; £${((order.deposit_pence ?? 0)/100).toFixed(2)} deposit already paid`,
           },
         },
       }],

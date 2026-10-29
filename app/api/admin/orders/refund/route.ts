@@ -32,10 +32,13 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
   const { data: order, error: orderError } = await admin.from("orders")
-    .select("id,user_id,amount_pence,currency,payment_status,checkout_session_id")
+    .select("id,user_id,amount_pence,deposit_pence,currency,payment_status,checkout_session_id")
     .eq("id", parsed.data.orderId).maybeSingle();
   if (orderError) return NextResponse.json({ error: "Order lookup failed." }, { status: 500 });
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+  if ((order.deposit_pence ?? 0) > 0) {
+    return NextResponse.json({ error: "This order includes a wallet deposit. Reconcile the deposit and Stripe balance together before issuing a refund." }, { status: 409 });
+  }
   if (order.payment_status !== "paid" || !order.checkout_session_id ||
       order.currency !== "GBP" || !Number.isSafeInteger(order.amount_pence) || order.amount_pence <= 0) {
     return NextResponse.json({ error: "This order has no eligible confirmed Stripe payment." }, { status: 409 });

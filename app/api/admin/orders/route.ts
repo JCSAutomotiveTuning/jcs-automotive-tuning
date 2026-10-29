@@ -37,7 +37,7 @@ const updateSchema = z
     (data) => {
       const action = data.action ?? "update";
 
-      if (action === "save_quote") {
+    if (action === "save_quote") {
         return data.quoteAmountPence !== undefined;
       }
 
@@ -192,7 +192,7 @@ export async function PATCH(req: Request) {
     const { data: existing, error: lookupError } = await admin
       .from("orders")
       .select(
-        "id,service_code,amount_pence,currency,status,payment_status,admin_notes,customer_notes"
+        "id,service_code,amount_pence,deposit_pence,currency,status,payment_status,admin_notes,customer_notes"
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -259,6 +259,16 @@ export async function PATCH(req: Request) {
       if (inputFiles.some(file => file.scan_status !== "clean")) {
         return NextResponse.json({ error: "Wait for antivirus clearance of uploaded files before requesting payment." }, { status: 409 });
       }
+    }
+
+      if (action === "save_quote" && (existing.deposit_pence ?? 0) > 0 &&
+      (quoteAmountPence ?? 0) < existing.deposit_pence) {
+      return NextResponse.json({ error: "The final quoted total must be at least the £20 wallet deposit." }, { status: 409 });
+    }
+
+    if (action === "save_quote" && existing.deposit_pence === 2000 &&
+      quoteAmountPence !== undefined && quoteAmountPence > 2000 && quoteAmountPence < 2030) {
+      return NextResponse.json({ error: "Quoted total must be £20.00 or at least £20.30, because Stripe cannot collect a remaining balance below 30p." }, { status: 409 });
     }
 
     if (action === "save_quote") {
@@ -339,6 +349,20 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ order: updated });
     }
 
+    if (action === "request_payment" && existing.deposit_pence === 2000 &&
+      existing.amount_pence === 2000) {
+      const { data: settled, error: settleError } = await admin.rpc("settle_fully_deposit_paid_order", {
+        p_order_id: orderId, p_user_id: auth.user.id,
+      });
+      if (settleError || !["settled", "already_settled"].includes(settled)) {
+        console.error("Deposit-only settlement failed:", settleError?.message, settled);
+        return NextResponse.json({ error: "Could not reconcile the fully funded £20 order." }, { status: 409 });
+      }
+      const { data: fullyPaid, error: fullError } = await admin.from("orders")
+        .select("id,amount_pence,status,payment_status,admin_notes,updated_at").eq("id",orderId).single();
+      if (fullError || !fullyPaid) return NextResponse.json({ error: "Settlement succeeded but order refresh failed." }, { status: 500 });
+      return NextResponse.json({ order: fullyPaid });
+    }
     if (action === "request_payment") {
       if (existing.status !== "awaiting_review") {
         return NextResponse.json(

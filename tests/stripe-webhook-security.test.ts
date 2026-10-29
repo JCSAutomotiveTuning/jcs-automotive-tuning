@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createAdminClient: vi.fn(),
   rpc: vi.fn(),
+  from: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -59,9 +60,11 @@ describe("Stripe webhook order payment security (local signatures, no network)",
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake_local_only");
     vi.stubEnv("STRIPE_WEBHOOK_SECRET", secret);
     mocks.rpc.mockReset();
+    mocks.from.mockReset();
+    mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { deposit_pence: 0 }, error: null }) }) }) }) });
     mocks.rpc.mockResolvedValue({ data: "confirmed", error: null });
     mocks.createAdminClient.mockReset();
-    mocks.createAdminClient.mockReturnValue({ rpc: mocks.rpc });
+    mocks.createAdminClient.mockReturnValue({ rpc: mocks.rpc, from: mocks.from });
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -82,6 +85,18 @@ describe("Stripe webhook order payment security (local signatures, no network)",
       p_attempt_id: attemptId,
       p_session_id: "cs_test_jcs_order_only",
       p_amount_pence: 5500,
+    });
+  });
+
+  it("confirms only the remaining Stripe balance for a deposit-backed order", async () => {
+    mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ eq: () => ({
+      maybeSingle: async () => ({ data: { deposit_pence: 2000 }, error: null })
+    }) }) }) });
+    const response = await send(session({ amount_total: 3500 }));
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith("confirm_wallet_deposit_order_payment", {
+      p_order_id: orderId, p_user_id: userId, p_attempt_id: attemptId,
+      p_session_id: "cs_test_jcs_order_only", p_amount_pence: 3500,
     });
   });
 
