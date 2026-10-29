@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import NewOrder from "./new-order";
 import ResumeUpload from "./ResumeUpload";
-import WalletPanel from "./wallet-panel";
 import OrderPaymentButton from "./OrderPaymentButton";
 import LiveClock from "@/components/LiveClock";
 
@@ -98,7 +97,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const [
     { data: orders, error: ordersError },
     { data: profile },
-    { data: wallet },
   ] = await Promise.all([
     supabase
       .from("orders")
@@ -113,11 +111,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       .select("role")
       .eq("id", user.id)
       .maybeSingle(),
-    supabase
-      .from("customer_wallets")
-      .select("balance_pence")
-      .eq("user_id", user.id)
-      .maybeSingle(),
   ]);
 
   if (ordersError) {
@@ -125,7 +118,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   }
 
   const visibleOrders = (orders ?? []).filter(o => !o.admin_notes?.includes("[LAUNCH TEST ARCHIVED 2026-10-29]"));
-  const balancePence = wallet?.balance_pence ?? 0;
 
   return (
     <>
@@ -324,7 +316,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       </div>
 
       <div style={{ marginTop: 24 }}>
-        <WalletPanel balancePence={balancePence} />
         <LoyaltyBalance />
       </div>
 
