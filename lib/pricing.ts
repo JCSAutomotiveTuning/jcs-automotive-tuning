@@ -6,6 +6,10 @@ export const SERVICES = {
     name: "Add-ons only — select required features",
     pricePence: 0,
   },
+  immo_off: {
+    name: "Immobiliser service (IMMO OFF) — from £95, ownership verification required",
+    pricePence: 9500,
+  },
   ecu_stage1: {
     name: "ECU Stage 1 file service",
     pricePence: 5500,
