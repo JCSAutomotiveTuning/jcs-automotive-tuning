@@ -1,17 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { MaskedAmount } from "@/components/PriceVisibility";
 
 const formatGBP = (pence: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 
 export default function WalletPanel({ balancePence }: { balancePence: number }) {
+  // Wallet is a retired payment method. Do not invite new customers to top up.
+  if (balancePence <= 0) return null;
   return (
-    <section className="card">
-      <h2>Legacy wallet credit</h2>
-      <p>Existing balance: <strong><MaskedAmount>{formatGBP(balancePence)}</MaskedAmount></strong></p>
-      <p>File uploads are included in your service price. No separate £20 upload charge or wallet top-up is required. New top-ups are disabled while historical credits are reconciled.</p>
-      {balancePence > 0 && <p>Existing wallet credit is preserved. Please contact support about how to apply or refund it; no automatic deduction will be made.</p>}
+    <section className="card" aria-label="Historical wallet credit">
+      <h2>Historical account credit</h2>
+      <p><strong><MaskedAmount>{formatGBP(balancePence)}</MaskedAmount></strong> remains on this account from the previous wallet system.</p>
+      <p>ECU/TCU file uploads are included in the quoted service price. You do not need to buy upload credits, and new wallet top-ups are disabled.</p>
+      <p>This historical credit has not been deducted or removed. For help with an eligible credit or refund, <Link href="/dashboard/support">contact JCS Support</Link>.</p>
     </section>
   );
 }
