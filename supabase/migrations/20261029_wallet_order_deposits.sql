@@ -1,6 +1,27 @@
 -- Staged only: apply to TEST Supabase before enabling JCS_WALLET_DEPOSITS_ENABLED.
 alter table public.orders add column if not exists deposit_pence integer not null default 0;
 alter table public.orders add constraint orders_deposit_bounds check (deposit_pence >= 0 and (amount_pence = 0 or deposit_pence <= amount_pence)) not valid;
+-- The old wallet includes pre-launch test-mode credits. Do not transfer them.
+create table if not exists public.deposit_wallets (
+ user_id uuid primary key references auth.users(id) on delete cascade,
+ balance_pence integer not null default 0 check (balance_pence >= 0),
+ updated_at timestamptz not null default now()
+);
+create table if not exists public.deposit_wallet_events (
+ id uuid primary key default gen_random_uuid(),
+ user_id uuid not null references auth.users(id),
+ amount_pence integer not null,
+ transaction_type text not null check (transaction_type in ('top_up','order_deposit','deposit_release')),
+ stripe_session_id text unique,
+ order_id uuid references public.orders(id),
+ description text,
+ created_at timestamptz not null default now()
+);
+create unique index if not exists deposit_wallet_event_order_once on public.deposit_wallet_events(order_id) where transaction_type='order_deposit';
+alter table public.deposit_wallets enable row level security;
+alter table public.deposit_wallet_events enable row level security;
+create policy "read own deposit balance" on public.deposit_wallets for select to authenticated using (user_id=auth.uid());
+create policy "read own deposit transactions" on public.deposit_wallet_events for select to authenticated using (user_id=auth.uid());
 -- Server-role only: create an order and reserve its £20 deposit in one database transaction.
 create or replace function public.create_wallet_deposit_order(
  p_user_id uuid, p_service_code text, p_service_name text, p_amount_pence integer,
@@ -14,8 +35,8 @@ begin
     or length(p_service_code) not between 1 and 80
     or length(p_vehicle_make) not between 1 and 60
     or length(p_vehicle_model) not between 1 and 80 then raise exception 'Invalid deposit order'; end if;
- insert into public.customer_wallets(user_id,balance_pence) values(p_user_id,0) on conflict(user_id) do nothing;
- select balance_pence into v_balance from public.customer_wallets where user_id=p_user_id for update;
+ insert into public.deposit_wallets(user_id,balance_pence) values(p_user_id,0) on conflict(user_id) do nothing;
+ select balance_pence into v_balance from public.deposit_wallets where user_id=p_user_id for update;
  if v_balance < 2000 then raise exception 'Insufficient wallet credit: £20 minimum required'; end if;
  select count(*) into v_active from public.orders where user_id=p_user_id
    and status not in ('completed','cancelled','failed');
@@ -24,8 +45,8 @@ begin
   vehicle_make,vehicle_model,engine_code,software_id,customer_notes,deposit_pence)
  values(p_user_id,p_service_code,p_service_name,p_amount_pence,'GBP','awaiting_review','unpaid',
   p_vehicle_make,p_vehicle_model,p_engine_code,p_software_id,p_customer_notes,2000) returning id into v_id;
- update public.customer_wallets set balance_pence=balance_pence-2000,updated_at=now() where user_id=p_user_id;
- insert into public.wallet_transactions(user_id,amount_pence,transaction_type,order_id,description)
+ update public.deposit_wallets set balance_pence=balance_pence-2000,updated_at=now() where user_id=p_user_id;
+ insert into public.deposit_wallet_events(user_id,amount_pence,transaction_type,order_id,description)
  values(p_user_id,-2000,'order_deposit',v_id,'£20 order deposit credited against final service price');
  return v_id;
 end $$;
@@ -58,3 +79,21 @@ begin
 end $$;
 revoke all on function public.confirm_wallet_deposit_order_payment(uuid,uuid,uuid,text,integer) from public,anon,authenticated;
 grant execute on function public.confirm_wallet_deposit_order_payment(uuid,uuid,uuid,text,integer) to service_role;
+
+create or replace function public.credit_deposit_wallet_topup(p_user_id uuid,p_session_id text,p_amount_pence integer)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare v_id uuid;
+begin
+ if auth.role() <> 'service_role' then raise exception 'Service role required'; end if;
+ if p_user_id is null or p_session_id !~ '^cs_(test|live)_' or p_amount_pence not in (2000,4000,10000)
+ then raise exception 'Invalid deposit wallet top-up'; end if;
+ insert into public.deposit_wallets(user_id,balance_pence) values(p_user_id,0) on conflict(user_id) do nothing;
+ insert into public.deposit_wallet_events(user_id,amount_pence,transaction_type,stripe_session_id,description)
+ values(p_user_id,p_amount_pence,'top_up',p_session_id,'Stripe deposit wallet top-up')
+ on conflict(stripe_session_id) do nothing returning id into v_id;
+ if v_id is null then return false; end if;
+ update public.deposit_wallets set balance_pence=balance_pence+p_amount_pence,updated_at=now() where user_id=p_user_id;
+ return true;
+end $$;
+revoke all on function public.credit_deposit_wallet_topup(uuid,text,integer) from public,anon,authenticated;
+grant execute on function public.credit_deposit_wallet_topup(uuid,text,integer) to service_role;
