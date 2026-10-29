@@ -37,16 +37,6 @@ const updateSchema = z
     (data) => {
       const action = data.action ?? "update";
 
-      if (action === "save_quote" && (existing.deposit_pence ?? 0) > 0 &&
-      (quoteAmountPence ?? 0) < existing.deposit_pence) {
-      return NextResponse.json({ error: "The final quoted total must be at least the £20 wallet deposit." }, { status: 409 });
-    }
-
-    if (action === "save_quote" && existing.deposit_pence === 2000 &&
-      quoteAmountPence !== undefined && quoteAmountPence > 2000 && quoteAmountPence < 2030) {
-      return NextResponse.json({ error: "Quoted total must be £20.00 or at least £20.30, because Stripe cannot collect a remaining balance below 30p." }, { status: 409 });
-    }
-
     if (action === "save_quote") {
         return data.quoteAmountPence !== undefined;
       }
@@ -269,6 +259,16 @@ export async function PATCH(req: Request) {
       if (inputFiles.some(file => file.scan_status !== "clean")) {
         return NextResponse.json({ error: "Wait for antivirus clearance of uploaded files before requesting payment." }, { status: 409 });
       }
+    }
+
+      if (action === "save_quote" && (existing.deposit_pence ?? 0) > 0 &&
+      (quoteAmountPence ?? 0) < existing.deposit_pence) {
+      return NextResponse.json({ error: "The final quoted total must be at least the £20 wallet deposit." }, { status: 409 });
+    }
+
+    if (action === "save_quote" && existing.deposit_pence === 2000 &&
+      quoteAmountPence !== undefined && quoteAmountPence > 2000 && quoteAmountPence < 2030) {
+      return NextResponse.json({ error: "Quoted total must be £20.00 or at least £20.30, because Stripe cannot collect a remaining balance below 30p." }, { status: 409 });
     }
 
     if (action === "save_quote") {
