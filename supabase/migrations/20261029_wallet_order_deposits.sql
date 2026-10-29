@@ -1,6 +1,6 @@
 -- Staged only: apply to TEST Supabase before enabling JCS_WALLET_DEPOSITS_ENABLED.
 alter table public.orders add column if not exists deposit_pence integer not null default 0;
-alter table public.orders add constraint orders_deposit_bounds check (deposit_pence >= 0 and deposit_pence <= amount_pence) not valid;
+alter table public.orders add constraint orders_deposit_bounds check (deposit_pence >= 0 and (amount_pence = 0 or deposit_pence <= amount_pence)) not valid;
 -- Server-role only: create an order and reserve its £20 deposit in one database transaction.
 create or replace function public.create_wallet_deposit_order(
  p_user_id uuid, p_service_code text, p_service_name text, p_amount_pence integer,
@@ -10,7 +10,7 @@ create or replace function public.create_wallet_deposit_order(
 declare v_id uuid; v_balance integer; v_active integer;
 begin
  if auth.role() <> 'service_role' then raise exception 'Service role required'; end if;
- if p_user_id is null or p_amount_pence < 2000 or p_amount_pence > 100000000
+ if p_user_id is null or p_amount_pence < 0 or p_amount_pence > 100000000
     or length(p_service_code) not between 1 and 80
     or length(p_vehicle_make) not between 1 and 60
     or length(p_vehicle_model) not between 1 and 80 then raise exception 'Invalid deposit order'; end if;
@@ -31,3 +31,30 @@ begin
 end $$;
 revoke all on function public.create_wallet_deposit_order(uuid,text,text,integer,text,text,text,text,text) from public,anon,authenticated;
 grant execute on function public.create_wallet_deposit_order(uuid,text,text,integer,text,text,text,text,text) to service_role;
+
+-- Idempotent confirmation of the remaining Stripe balance. Existing orders use the legacy RPC.
+create or replace function public.confirm_wallet_deposit_order_payment(
+ p_order_id uuid, p_user_id uuid, p_attempt_id uuid, p_session_id text, p_amount_pence integer
+) returns text language plpgsql security definer set search_path = '' as $$
+declare v_order public.orders%rowtype;
+begin
+ if auth.role() <> 'service_role' then raise exception 'Service role required'; end if;
+ if p_session_id !~ '^cs_(test|live)_' or p_amount_pence <= 0 or p_attempt_id is null then return 'invalid'; end if;
+ select * into v_order from public.orders where id=p_order_id and user_id=p_user_id for update;
+ if not found then return 'not_found'; end if;
+ if v_order.currency <> 'GBP' or v_order.deposit_pence <> 2000
+    or v_order.amount_pence - v_order.deposit_pence <> p_amount_pence
+    or v_order.checkout_attempt_id is distinct from p_attempt_id then return 'mismatch'; end if;
+ if v_order.payment_status='paid' then
+   if v_order.stripe_payment_session_id=p_session_id then return 'already_confirmed'; end if;
+   return 'different_payment';
+ end if;
+ if v_order.status <> 'awaiting_payment' or v_order.payment_status <> 'unpaid'
+    or (v_order.checkout_session_id is not null and v_order.checkout_session_id <> p_session_id)
+ then return 'not_payable'; end if;
+ update public.orders set checkout_session_id=p_session_id,stripe_payment_session_id=p_session_id,
+   payment_status='paid',status='paid',updated_at=now() where id=p_order_id;
+ return 'confirmed';
+end $$;
+revoke all on function public.confirm_wallet_deposit_order_payment(uuid,uuid,uuid,text,integer) from public,anon,authenticated;
+grant execute on function public.confirm_wallet_deposit_order_payment(uuid,uuid,uuid,text,integer) to service_role;
