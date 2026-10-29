@@ -26,15 +26,17 @@ export async function GET() {
   const gate = await adminOnly();
   if ("response" in gate) return gate.response;
   const db = createAdminClient();
-  const [files, catalog] = await Promise.all([
+  const [files, catalog, removed] = await Promise.all([
     db.from("order_files").select("id,order_id,original_filename,size_bytes,scan_status,created_at,user_id").eq("kind","customer_original").order("created_at", { ascending: false }).limit(1000),
     db.from("original_file_catalog").select("file_id,hw_id,sw_id").limit(1000),
+    db.from("original_file_library_exclusions").select("file_id").limit(10000),
   ]);
-  if (files.error || catalog.error || !files.data || !catalog.data)
+  if (files.error || catalog.error || removed.error || !files.data || !catalog.data || !removed.data)
     return NextResponse.json({ error: "File catalogue unavailable" }, { status: 503 });
   // Never expose customer details or raw storage paths through this listing.
   const meta = new Map(catalog.data.map(x => [x.file_id, x]));
-  const items = files.data.map(f => {
+  const excluded = new Set(removed.data.map(x => x.file_id));
+  const items = files.data.filter(f => !excluded.has(f.id)).map(f => {
     const m = meta.get(f.id);
     const defined = !!m?.hw_id && !!m?.sw_id;
     return { fileId: f.id, filename: f.original_filename, orderId: f.order_id,
@@ -71,4 +73,21 @@ export async function PATCH(req: Request) {
   }, { onConflict: "file_id" });
   if (error) return NextResponse.json({ error: "Could not save identifiers" }, { status: 503 });
   return NextResponse.json({ ok: true, category: "identified" });
+}
+
+// Remove a file from the admin library index only. Never delete customer order_files or Storage objects.
+export async function DELETE(req: Request) {
+  const gate = await adminOnly();
+  if ("response" in gate) return gate.response;
+  const parsed = z.object({ fileId: z.string().uuid() }).safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "A valid file ID is required." }, { status: 400 });
+  const db = createAdminClient();
+  const { data: source, error: lookupError } = await db.from("order_files")
+    .select("id").eq("id", parsed.data.fileId).eq("kind", "customer_original").maybeSingle();
+  if (lookupError) return NextResponse.json({ error: "Could not verify the original." }, { status: 503 });
+  if (!source) return NextResponse.json({ error: "Original file not found." }, { status: 404 });
+  const { error } = await db.from("original_file_library_exclusions")
+    .upsert({ file_id: source.id, removed_by: gate.user.id }, { onConflict: "file_id" });
+  if (error) return NextResponse.json({ error: "Could not remove entry from library." }, { status: 503 });
+  return NextResponse.json({ ok: true, storedOriginalPreserved: true }, { headers: { "Cache-Control": "no-store" } });
 }
