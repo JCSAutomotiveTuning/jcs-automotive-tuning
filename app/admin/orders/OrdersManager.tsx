@@ -10,6 +10,7 @@ type Order = {
   service_code?: string | null;
   service_name: string;
   amount_pence: number;
+  deposit_pence?: number;
   currency: string;
   status: string;
   payment_status: string;
@@ -96,6 +97,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   const [success, setSuccess] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [refunding, setRefunding] = useState(false);
+  const [releasingDeposit, setReleasingDeposit] = useState(false);
   const [refundHistory, setRefundHistory] = useState<{ refunds: { id: string; amountPence: number; status: string; created: number }[]; refundablePence: number; verifiedPayment: boolean } | null>(null);
   const [refundHistoryError, setRefundHistoryError] = useState("");
   const [finishedFile, setFinishedFile] = useState<File | null>(null);
@@ -217,6 +219,24 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
     } finally {
       setRefunding(false);
     }
+  }
+
+  async function releaseDeposit() {
+    if (!selected || releasingDeposit || !["cancelled","failed"].includes(selected.status) ||
+      selected.payment_status !== "unpaid" || selected.deposit_pence !== 2000) return;
+    const id = selected.id;
+    if (!window.confirm("Return £20 to this customer's verified deposit wallet for this cancelled job?")) return;
+    setReleasingDeposit(true); setError("");setSuccess("");
+    try {
+      const res = await fetch("/api/admin/orders/deposit-release",{
+        method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
+        body:JSON.stringify({orderId:id,confirmation:"RELEASE_DEPOSIT"})
+      });
+      const data=await res.json();
+      if(!res.ok || !data.ok) throw new Error(data.error || "Could not release deposit");
+      setSuccess("£20 deposit returned to customer wallet. Repeated requests will not issue another credit.");
+    } catch(e) {setError(e instanceof Error?e.message:"Could not release deposit");}
+    finally {setReleasingDeposit(false);}
   }
 
   async function uploadCompletedFile() {
@@ -471,6 +491,16 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                     </p>
                     <p className="mt-2 text-xs text-amber-200">Verify ECU identification, checksum and calibration before releasing any file. Antivirus clearance alone is not tuning QA.</p>
                     <Link href="/admin/files" className={`${secondaryButton} mt-3`}>Review scans and approve delivery</Link>
+                  </div>
+                )}
+                {selected && selected.deposit_pence === 2000 && (
+                  <div className="rounded-xl border border-white/10 p-4">
+                    <h3 className="text-sm font-bold text-white">£20 wallet deposit</h3>
+                    <p className="mt-2 text-xs text-slate-400">Already reserved against this order. The final Stripe checkout excludes this £20.</p>
+                    {["cancelled","failed"].includes(selected.status) && selected.payment_status === "unpaid" && (
+                      <button type="button" className={`${secondaryButton} mt-3`} disabled={releasingDeposit || busy !== null}
+                        onClick={()=>void releaseDeposit()}>{releasingDeposit?"Returning credit...":"Return £20 to wallet"}</button>
+                    )}
                   </div>
                 )}
                 {allowQuote && <div className="border-t border-white/[0.08] pt-5">
