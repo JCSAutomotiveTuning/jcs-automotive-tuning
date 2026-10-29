@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user || !user.email) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const origin = req.headers.get("origin");
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\\/+$/, "");
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "");
   if (!siteUrl || !siteUrl.startsWith("https://") || (origin && new URL(origin).origin !== new URL(siteUrl).origin)) {
     return NextResponse.json({ error: "Invalid request origin or payment URL." }, { status: 403 });
   }
