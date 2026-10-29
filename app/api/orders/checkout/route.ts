@@ -23,16 +23,16 @@ export async function POST(req: Request) {
     }
 
     const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey || !/^sk_(test|live)_/.test(secretKey)) {
+    if (!secretKey || !/^(sk|rk)_(test|live)_/.test(secretKey)) {
       console.error("Stripe server secret key is missing or has an invalid prefix.");
       return NextResponse.json({ error: "Payments are not configured correctly." }, { status: 503 });
     }
 
-    if (process.env.VERCEL_ENV === "production" && !secretKey.startsWith("sk_live_")) {
+    if (process.env.VERCEL_ENV === "production" && !(/^(sk|rk)_live_/.test(secretKey))) {
       console.error("Production checkout requires a live Stripe secret key.");
       return NextResponse.json({ error: "Live payments are not configured correctly." }, { status: 503 });
     }
-    if (process.env.VERCEL_ENV === "preview" && !secretKey.startsWith("sk_test_")) {
+    if (process.env.VERCEL_ENV === "preview" && !(/^(sk|rk)_test_/.test(secretKey))) {
       console.error("Preview checkout requires a test-mode Stripe secret key.");
       return NextResponse.json({ error: "Test payments are not configured correctly." }, { status: 503 });
     }
