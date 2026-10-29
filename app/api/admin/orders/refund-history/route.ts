@@ -31,8 +31,8 @@ export async function GET(req: Request) {
   }
 
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || !/^sk_(live|test)_/.test(key) ||
-      (process.env.VERCEL_ENV === "production" && !key.startsWith("sk_live_"))) {
+  if (!key || !/^(sk|rk)_(live|test)_/.test(key) ||
+      (process.env.VERCEL_ENV === "production" && !/^(sk|rk)_live_/.test(key))) {
     return NextResponse.json({ error: "Stripe configuration unavailable." }, { status: 503 });
   }
   try {
