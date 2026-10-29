@@ -6,6 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import NewOrder from "./new-order";
+import DepositWalletPanel from "./DepositWalletPanel";
 import ResumeUpload from "./ResumeUpload";
 import OrderPaymentButton from "./OrderPaymentButton";
 import LiveClock from "@/components/LiveClock";
@@ -94,6 +95,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   if (!user) redirect("/login");
 
+  const depositsEnabled = process.env.JCS_WALLET_DEPOSITS_ENABLED === "true";
   const [
     { data: orders, error: ordersError },
     { data: profile },
@@ -112,6 +114,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       .eq("id", user.id)
       .maybeSingle(),
   ]);
+
+  const { data: depositWallet } = depositsEnabled
+    ? await supabase.from("deposit_wallets").select("balance_pence").eq("user_id", user.id).maybeSingle()
+    : { data: null };
 
   if (ordersError) {
     console.error("Dashboard order lookup failed:", ordersError.message);
@@ -167,10 +173,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <p>Orders shown: latest 50. Order and payment details are available below.</p>
         </div>
       </section>
+      {depositsEnabled && <DepositWalletPanel balancePence={depositWallet?.balance_pence ?? 0} />}
       <div className="jcs-section-heading"><div><span className="eyebrow">File services</span><h2>Manage your tuning jobs</h2></div><span className="pill">Private customer workspace</span></div>
       <div className="two">
         <section id="upload-tuning-file" className="card" style={{ scrollMarginTop: 24 }}>
           <h2>Submit a job</h2>
+          {depositsEnabled && <p className="notice">A verified £20 wallet deposit is required before submitting a new request. It is credited toward the final quote.</p>}
           <NewOrder initialService={initialService} />
         </section>
 
