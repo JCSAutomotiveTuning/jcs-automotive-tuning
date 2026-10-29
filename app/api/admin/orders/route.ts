@@ -39,7 +39,12 @@ const updateSchema = z
 
       if (action === "save_quote" && (existing.deposit_pence ?? 0) > 0 &&
       (quoteAmountPence ?? 0) < existing.deposit_pence) {
-      return NextResponse.json({ error: "The final quoted total must be at least the £20 wallet deposit. Contact support for a fully deposit-covered order." }, { status: 409 });
+      return NextResponse.json({ error: "The final quoted total must be at least the £20 wallet deposit." }, { status: 409 });
+    }
+
+    if (action === "save_quote" && existing.deposit_pence === 2000 &&
+      quoteAmountPence !== undefined && quoteAmountPence > 2000 && quoteAmountPence < 2030) {
+      return NextResponse.json({ error: "Quoted total must be £20.00 or at least £20.30, because Stripe cannot collect a remaining balance below 30p." }, { status: 409 });
     }
 
     if (action === "save_quote") {
