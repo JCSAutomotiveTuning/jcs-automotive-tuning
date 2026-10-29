@@ -6,6 +6,7 @@ import { ADDONS, ADDON_LABELS, addonPrice, parseDtcCodes, DTC_REVIEW_PRICE_PENCE
 const SERVICE_OPTIONS = [
   ["addons_only", "Add-ons only — pay for selected features"],
   ["ecu_stage1", "ECU Stage 1 file service - GBP 55"],
+  ["immo_off", "Immobiliser service (IMMO OFF) - from GBP 95 / verification required"],
   ["dsg_tcu", "DSG / TCU calibration review - GBP 70"],
   ["log_review", "ECU / TCU file check & review - GBP 20"],
   ["datalog_analysis", "Datalog analysis (VCDS / OBD / ECU / TCU logs) - GBP 20"],
@@ -34,7 +35,7 @@ export default function NewOrder({ initialService = "ecu_stage1" }: { initialSer
 
 
   const tcuService = service === "dsg_tcu" || service === "custom_tcu";
-  const reviewOnly = service === "log_review" || service === "datalog_analysis" || service === "emissions_diagnostics";
+  const reviewOnly = service === "immo_off" || service === "log_review" || service === "datalog_analysis" || service === "emissions_diagnostics";
   const showEcu = !tcuService && !reviewOnly;
   const showTcu = tcuService || service === "ecu_tcu_package" || service === "addons_only";
   const visibleGroups: AddonGroup[] = [
@@ -44,13 +45,13 @@ export default function NewOrder({ initialService = "ecu_stage1" }: { initialSer
   ];
   const visibleAddons = addons.filter(a => visibleGroups.some(g => a.startsWith(`${g}:`)));
   const basePrices: Record<string,number> = {
-    addons_only:0,ecu_stage1:5500,dsg_tcu:7000,log_review:2000,datalog_analysis:2000,
+    addons_only:0,immo_off:9500,ecu_stage1:5500,dsg_tcu:7000,log_review:2000,datalog_analysis:2000,
     emissions_diagnostics:3000,custom_ecu:19500,custom_tcu:19500,ecu_tcu_package:0,
   };
   const dtcCodes = dtcReview ? parseDtcCodes(dtcInput) : [];
   const dtcTotal = dtcReview && dtcCodes ? DTC_REVIEW_PRICE_PENCE : 0;
   const addonTotal = visibleAddons.reduce((sum,key)=>sum+(addonPrice(key)??0),0) + dtcTotal;
-  const quoteRequired = ["ecu_tcu_package","custom_ecu","custom_tcu","addons_only"].includes(service) ||
+  const quoteRequired = ["ecu_tcu_package","custom_ecu","custom_tcu","addons_only","immo_off"].includes(service) ||
     visibleAddons.some(key=>addonPrice(key)===null);
   const pounds=(pence:number)=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(pence/100);
   const toggle = (key:string, checked:boolean) => setAddons(current =>
@@ -219,6 +220,10 @@ export default function NewOrder({ initialService = "ecu_stage1" }: { initialSer
         </select>
       </div>
     </section>
+    {service === "immo_off" && <section className="notice">
+      <strong>Vehicle ownership and legal-use verification required</strong>
+      <p>From £95. Submit a request for manual review; no payment is taken until JCS verifies ownership or written authorisation, technical suitability, and lawful use. No work is guaranteed.</p>
+    </section>}
     <section>
       <h3>2. Vehicle and controller details</h3>
       <div className="field"><label htmlFor="vehicleMake">Vehicle make</label><input id="vehicleMake" name="vehicleMake" placeholder="Volkswagen" maxLength={60} required /></div>
