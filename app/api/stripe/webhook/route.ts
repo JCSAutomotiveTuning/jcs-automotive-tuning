@@ -18,14 +18,14 @@ export async function POST(req: Request) {
   }
 
   // Never mix Stripe's test and live environments in hosted deployments.
-  if ((!/^sk_(test|live)_/.test(secretKey)) || !webhookSecret.startsWith("whsec_") ||
-      (process.env.VERCEL_ENV === "production" && !secretKey.startsWith("sk_live_")) ||
-      (process.env.VERCEL_ENV === "preview" && !secretKey.startsWith("sk_test_"))) {
+  if ((!/^(sk|rk)_(test|live)_/.test(secretKey)) || !webhookSecret.startsWith("whsec_") ||
+      (process.env.VERCEL_ENV === "production" && !/^(sk|rk)_live_/.test(secretKey)) ||
+      (process.env.VERCEL_ENV === "preview" && !/^(sk|rk)_test_/.test(secretKey))) {
     console.error("Stripe webhook configuration does not match this environment.", {
       deploymentEnvironment: process.env.VERCEL_ENV ?? "unknown",
-      apiKeyHasRecognisedPrefix: /^sk_(test|live)_/.test(secretKey),
-      apiKeyMatchesProduction: secretKey.startsWith("sk_live_"),
-      apiKeyMatchesPreview: secretKey.startsWith("sk_test_"),
+      apiKeyHasRecognisedPrefix: /^(sk|rk)_(test|live)_/.test(secretKey),
+      apiKeyMatchesProduction: /^(sk|rk)_live_/.test(secretKey),
+      apiKeyMatchesPreview: /^(sk|rk)_test_/.test(secretKey),
       webhookSecretHasExpectedPrefix: webhookSecret.startsWith("whsec_"),
     });
     return NextResponse.json({ error: "Webhook is not configured for this environment." }, { status: 503 });
