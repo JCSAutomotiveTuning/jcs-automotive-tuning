@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { AdminArea, Feedback, dateTime, money } from "../_components/AdminArea";
 
 type Order = {
@@ -22,6 +23,7 @@ type Order = {
   created_at: string;
   updated_at?: string | null;
   customer_email: string;
+  order_files?: { id: string; kind: string; scan_status: string; delivery_status: string | null }[];
 };
 
 type UpdateResponse = {
@@ -101,6 +103,9 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   const [uploadMessage, setUploadMessage] = useState("");
 
   const selected = orders.find((order) => order.id === selectedId) ?? null;
+  const finishedOutputs = selected?.order_files?.filter(file => file.kind === "completed_output") ?? [];
+  const clearedOutputs = finishedOutputs.filter(file => file.scan_status === "clean");
+  const approvedOutputs = clearedOutputs.filter(file => file.delivery_status === "approved");
   const stats = useMemo(() => ({
     total: orders.length,
     active: orders.filter((order) => !closed.has(order.status)).length,
@@ -450,6 +455,22 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                         {uploadMessage}
                       </p>
                     )}
+                  </div>
+                )}
+                {selected && selected.payment_status === "paid" && (
+                  <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.04] p-4">
+                    <h3 className="text-sm font-bold text-white">Finished file delivery</h3>
+                    <p className="mt-2 text-xs leading-5 text-slate-300">
+                      {finishedOutputs.length === 0
+                        ? "No finished files uploaded. Upload the completed BIN/ORI file during workshop or QA."
+                        : approvedOutputs.length > 0
+                          ? `${approvedOutputs.length} finished file(s) approved for delivery.`
+                          : clearedOutputs.length > 0
+                            ? `${clearedOutputs.length} file(s) passed antivirus. Staff delivery approval is still required.`
+                            : `${finishedOutputs.length} finished file(s) awaiting antivirus clearance.`}
+                    </p>
+                    <p className="mt-2 text-xs text-amber-200">Verify ECU identification, checksum and calibration before releasing any file. Antivirus clearance alone is not tuning QA.</p>
+                    <Link href="/admin/files" className={`${secondaryButton} mt-3`}>Review scans and approve delivery</Link>
                   </div>
                 )}
                 {allowQuote && <div className="border-t border-white/[0.08] pt-5">
