@@ -18,7 +18,7 @@ const SERVICE_OPTIONS = [
 const EXTENSIONS = ["bin","ori","hex","frf","odx","txt","csv","log","zip"];
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 
-export default function NewOrder({ initialService = "ecu_stage1" }: { initialService?: string }) {
+export default function NewOrder({ initialService = "ecu_stage1", depositsEnabled = false }: { initialService?: string; depositsEnabled?: boolean }) {
   const [message,setMessage] = useState("");
   const [busy,setBusy] = useState(false);
   const [file,setFile] = useState<File|null>(null);
@@ -303,7 +303,7 @@ export default function NewOrder({ initialService = "ecu_stage1" }: { initialSer
       <strong>{quoteRequired
         ? `Indicative subtotal: ${pounds((basePrices[service]??0)+addonTotal)} + custom quote items (final price to be confirmed)`
         : `Calculated total: ${pounds((basePrices[service]??0)+addonTotal)} (subject to review)`}</strong>
-      <p><strong>File submission included:</strong> No separate £20 upload fee or wallet top-up is required. You pay the confirmed service price once through order checkout.</p>
+      {depositsEnabled ? <p><strong>£20 deposit required:</strong> One £20 wallet deposit is reserved when this order is created and credited towards the final service price. For example, a £55 service costs £20 now from wallet credit and £35 after approval. Failed upload retries for the same order do not take another deposit. A maximum of three active orders is allowed.</p> : <p><strong>File submission included:</strong> No separate £20 upload fee or wallet top-up is required. You pay the confirmed service price once through order checkout.</p>}
       <p style={{fontSize:13}}>Do not upload files containing personal information you lack permission to share. Emissions-related options are diagnostic and lawful-repair services only.</p>
     </section>
     <button className="btn" type="submit" disabled={busy}>{busy?"Processing...":retryOrderId?"Retry Upload":"Submit tuning request"}</button>
