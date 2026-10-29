@@ -103,7 +103,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     supabase
       .from("orders")
       .select(
-        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,admin_notes,order_files(id,scan_status)"
+        "id,service_code,service_name,status,payment_status,amount_pence,deposit_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,admin_notes,order_files(id,scan_status)"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -179,7 +179,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <section id="upload-tuning-file" className="card" style={{ scrollMarginTop: 24 }}>
           <h2>Submit a job</h2>
           {depositsEnabled && <p className="notice">A verified £20 wallet deposit is required before submitting a new request. It is credited toward the final quote.</p>}
-          <NewOrder initialService={initialService} />
+          <NewOrder initialService={initialService} depositsEnabled={depositsEnabled} />
         </section>
 
         <section id="order-history" className="card" style={{scrollMarginTop:24}}>
@@ -247,6 +247,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                     {hasPrice && (
                       <p className="order-total">
                         <strong>Total <MaskedAmount>{formatPrice(o.amount_pence, o.currency)}</MaskedAmount></strong>
+                        {(o.deposit_pence ?? 0) > 0 && <span className="order-detail"> · Deposit credited: <MaskedAmount>{formatPrice(o.deposit_pence, o.currency)}</MaskedAmount> · Remaining: <MaskedAmount>{formatPrice(Math.max(0, o.amount_pence - (o.deposit_pence ?? 0)), o.currency)}</MaskedAmount></span>}
                       </p>
                     )}
 
