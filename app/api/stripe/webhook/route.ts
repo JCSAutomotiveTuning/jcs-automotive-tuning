@@ -158,6 +158,26 @@ export async function POST(req: Request) {
       { status: 409 }
     );
   }
+  // Deposit wallet credits are isolated from pre-launch test wallet balances.
+  if (session.metadata?.type === "deposit_wallet_topup") {
+    const userId = session.metadata.user_id;
+    const amount = Number(session.metadata.top_up_pence);
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (process.env.JCS_WALLET_DEPOSITS_ENABLED !== "true" ||
+      !userId || !uuid.test(userId) || session.client_reference_id !== userId ||
+      session.currency !== "gbp" || ![2000, 4000, 10000].includes(amount) ||
+      session.amount_total !== amount || session.metadata.top_up_pence !== String(amount)) {
+      return NextResponse.json({ error: "Deposit wallet payment needs reconciliation." }, { status: 409 });
+    }
+    const { error } = await admin.rpc("credit_deposit_wallet_topup", {
+      p_user_id: userId, p_session_id: session.id, p_amount_pence: amount,
+    });
+    if (error) {
+      console.error("Deposit wallet credit failed:", error.message);
+      return NextResponse.json({ error: "Deposit wallet credit requires reconciliation." }, { status: 500 });
+    }
+    return NextResponse.json({ received: true });
+  }
   // Customer order payments: legacy and reserved attempts are confirmed atomically.
   if (session.metadata?.type === "order_payment") {
     const orderId = session.metadata.order_id;
@@ -181,7 +201,20 @@ export async function POST(req: Request) {
       }
     }
 
-    const { data: result, error } = attemptId
+    const { data: depositOrder, error: depositLookupError } = await admin.from("orders")
+      .select("deposit_pence").eq("id", orderId).eq("user_id", userId).maybeSingle();
+    if (depositLookupError || !depositOrder) {
+      return NextResponse.json({ error: "Order deposit lookup failed." }, { status: 503 });
+    }
+    if (depositOrder.deposit_pence > 0 && !attemptId) {
+      return NextResponse.json({ error: "Deposit order checkout needs an attempt reference." }, { status: 409 });
+    }
+    const { data: result, error } = attemptId && depositOrder.deposit_pence > 0
+      ? await admin.rpc("confirm_wallet_deposit_order_payment", {
+          p_order_id: orderId, p_user_id: userId, p_attempt_id: attemptId,
+          p_session_id: session.id, p_amount_pence: session.amount_total,
+        })
+      : attemptId
       ? await admin.rpc("confirm_reserved_order_payment", {
           p_order_id: orderId, p_user_id: userId, p_attempt_id: attemptId,
           p_session_id: session.id, p_amount_pence: session.amount_total,
