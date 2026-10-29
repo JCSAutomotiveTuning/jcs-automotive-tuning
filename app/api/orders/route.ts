@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   if(!isServiceCode(v.serviceCode)) return NextResponse.json({error:"Unsupported service."},{status:400});
 
   const tcuOnly = v.serviceCode==="dsg_tcu" || v.serviceCode==="custom_tcu";
-  const reviewOnly = v.serviceCode==="log_review" || v.serviceCode==="datalog_analysis" || v.serviceCode==="emissions_diagnostics";
+  const reviewOnly = v.serviceCode==="immo_off" || v.serviceCode==="log_review" || v.serviceCode==="datalog_analysis" || v.serviceCode==="emissions_diagnostics";
   const ecuAllowed = !tcuOnly && !reviewOnly;
   const tcuAllowed = tcuOnly || v.serviceCode==="ecu_tcu_package" || v.serviceCode==="addons_only";
   const unique = [...new Set(v.addons)];
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   if (!v.dtcReview && v.dtcCodes.trim()) return NextResponse.json({error:"Enable DTC review to submit fault codes."},{status:400});
   const service=SERVICES[v.serviceCode];
   const addonTotal=unique.reduce((sum,key)=>sum+(addonPrice(key)??0),0) + (v.dtcReview ? DTC_REVIEW_PRICE_PENCE : 0);
-  const quoteRequired=["custom_ecu","custom_tcu","ecu_tcu_package","addons_only"].includes(v.serviceCode) ||
+  const quoteRequired=["custom_ecu","custom_tcu","ecu_tcu_package","addons_only","immo_off"].includes(v.serviceCode) ||
     unique.some(key=>addonPrice(key)===null);
   const addonsText=unique.length
     ? "\n\nRequested add-ons (pending compatibility and quotation):\n" +
@@ -54,9 +54,12 @@ export async function POST(req: Request) {
     : "";
   const fuelText=ecuAllowed && v.fuelType ? `\nFuel type: ${v.fuelType}` : "";
   const dtcText = dtcCodes?.length ? `\nDTC review requested (GBP 30.00 fixed for ${dtcCodes.length} code(s)): ${dtcCodes.join(", ")}\nDTC requests subject to diagnostics, safety and legal compliance.` : "";
+  const verificationText = v.serviceCode === "immo_off"
+    ? "\\nIMMOBILISER SERVICE: starting price GBP 95.00. Ownership or written authorisation and legal/technical suitability must be verified by staff before quoting, payment, or fulfilment."
+    : "";
   const pricingText=`\nIndicative priced add-ons: GBP ${(addonTotal/100).toFixed(2)}` +
     (quoteRequired ? "\nFINAL PRICE REQUIRES MANUAL CONFIRMATION - DO NOT TAKE PAYMENT YET." : "");
-  const customerNotes=`${v.notes}${fuelText}${addonsText}${dtcText}${pricingText}`.trim();
+  const customerNotes=`${v.notes}${fuelText}${addonsText}${dtcText}${verificationText}${pricingText}`.trim();
   if(customerNotes.length>3000) return NextResponse.json({error:"Please shorten notes or reduce add-on selections."},{status:400});
 
   const {data:order,error}=await createAdminClient().from("orders").insert({
