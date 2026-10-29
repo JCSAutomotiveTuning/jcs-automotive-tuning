@@ -170,9 +170,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <div><strong>{visibleOrders.length}</strong><span>Recent orders</span></div>
             <div><strong>{visibleOrders.filter(o=>!["completed","cancelled","failed"].includes(o.status)).length ?? 0}</strong><span>Active jobs</span></div>
             <div><strong>{visibleOrders.filter(o=>o.status==="completed").length ?? 0}</strong><span>Completed</span></div>
-            <div><strong><MaskedAmount>{formatPrice(balancePence,"GBP")}</MaskedAmount></strong><span>Wallet balance</span></div>
+            
           </div>
-          <p>Orders shown: latest 50. Wallet and payment details are available below.</p>
+          <p>Orders shown: latest 50. Order and payment details are available below.</p>
         </div>
       </section>
       <div className="jcs-section-heading"><div><span className="eyebrow">File services</span><h2>Manage your tuning jobs</h2></div><span className="pill">Private customer workspace</span></div>
