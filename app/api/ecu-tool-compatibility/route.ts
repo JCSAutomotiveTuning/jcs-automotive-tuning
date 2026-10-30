@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toolDirectoryForFamily } from "@/lib/ecu-tool-directory";
+import { sourcedMatches } from "@/lib/sourced-tool-matches";
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
   if (vehicles.error) console.error("ECU catalogue lookup:", vehicles.error.message);
   const reference = toolDirectoryForFamily(safe);
   return NextResponse.json({
-    matches: tools.data || [],
+    matches: [...(tools.data || []), ...sourcedMatches(safe)],
     directory: reference.entries,
     familyRecognised: reference.familyRecognised,
     vehicleReferences: vehicles.data || [],
