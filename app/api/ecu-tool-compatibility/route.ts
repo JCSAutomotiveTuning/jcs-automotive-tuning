@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toolDirectoryForFamily } from "@/lib/ecu-tool-directory";
 import { sourcedMatches } from "@/lib/sourced-tool-matches";
-import { lookupPdEngine } from "@/lib/vag-pd-engines";
+import { lookupPdEngine, pdEngineWarning } from "@/lib/vag-pd-engines";
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     matches: [...(tools.data || []), ...sourcedMatches(resolvedFamily)],
     engineMatches,
+    engineWarning: pdEngineWarning(safe),
     directory: reference.entries,
     familyRecognised: reference.familyRecognised,
     vehicleReferences: vehicles.data || [],
