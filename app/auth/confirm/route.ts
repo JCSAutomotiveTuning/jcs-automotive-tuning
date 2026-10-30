@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from "next/server";
-import {createServerClient} from "@supabase/ssr";
+import {createServerClient,type CookieOptions} from "@supabase/ssr";
 import type {EmailOtpType} from "@supabase/supabase-js";
 
 export const dynamic="force-dynamic";
@@ -17,7 +17,7 @@ export async function GET(request:NextRequest){
  const supabase=createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,{
   cookies:{
    getAll(){return request.cookies.getAll();},
-   setAll(cookiesToSet){for(const cookie of cookiesToSet){request.cookies.set(cookie.name,cookie.value);response.cookies.set(cookie.name,cookie.value,cookie.options);}}
+   setAll(cookiesToSet:{name:string;value:string;options:CookieOptions}[]){for(const cookie of cookiesToSet){request.cookies.set(cookie.name,cookie.value);response.cookies.set(cookie.name,cookie.value,cookie.options);}}
   }
  });
  const {error}=token_hash
