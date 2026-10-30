@@ -1,3 +1,4 @@
+import {chargeSearch} from "@/lib/customer-search-quota";
 import { NextRequest,NextResponse } from "next/server";
 import {createClient} from "@/lib/supabase/server";
 import {createAdminClient} from "@/lib/supabase/admin";
@@ -24,6 +25,8 @@ export async function GET(req:NextRequest){
  if(!["all","OBD","Bench","Boot","BDM"].includes(method))return NextResponse.json({error:"Invalid connection method"},{status:400});
  if(make&&!brands.some(b=>b.toLowerCase()===make.toLowerCase()))return NextResponse.json({error:"Unknown make filter"},{status:400});
  if(!q&&!make)return NextResponse.json({error:"Enter a vehicle, engine, ECU family or choose a make"},{status:400});
+ const {blocked,quota}=await chargeSearch();
+ if(blocked)return blocked;
  const db=createAdminClient();
  let referenceQuery=db.from("vehicle_ecu_references")
  .select("make,model,generation,engine_code,engine_label,power_ps,listed_year,ecu_manufacturer,ecu_family,tool_name,connection_method,read_capability,write_capability,coverage_status,source_url,source_label,source_year",{count:"exact"})
@@ -49,6 +52,7 @@ export async function GET(req:NextRequest){
  const families=[...new Set([...refs.map(v=>v.ecu_family),...existing.map(v=>v.ecu_family)].filter(Boolean))].slice(0,15);
  const sourced=families.flatMap(f=>sourcedMatches(f));
  return NextResponse.json({
+  quota,
   references:refs,
   candidateVehicles:existing,
   familyProtocolReferences:sourced,
