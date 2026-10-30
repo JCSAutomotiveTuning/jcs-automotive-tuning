@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
 
       if (error) {
         console.error("Password recovery request failed:", error.message);
-        setMessage("Could not process the request right now. Please try again shortly.");
+        setMessage(error.status === 429 || /rate limit|too many requests/i.test(error.message) ? "Password reset emails are temporarily limited. Please use a recent email if you already received one, or try again later. Repeated requests will not help." : "Could not send the reset email right now. Please try again later or contact JCS Support.");
       } else {
         setMessage("If an account exists for that email, a password reset link will be sent. Check your inbox and spam folder.");
       }
