@@ -24,7 +24,7 @@ type Order = {
   created_at: string;
   updated_at?: string | null;
   customer_email: string;
-  order_files?: { id: string; kind: string; scan_status: string; delivery_status: string | null }[];
+  order_files?: { id: string; kind: string; scan_status: string; delivery_status: string | null; original_filename: string; size_bytes: number }[];
 };
 
 type UpdateResponse = {
@@ -469,6 +469,31 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                       {busy === "save" ? "Saving order…" : "Save order changes →"}
                     </button>
                   </div>
+                </div>
+
+                <div className="border-t border-white/[0.08] pt-5">
+                  <h3 className="text-base font-extrabold text-white">Customer uploaded files</h3>
+                  <p className="mt-1 text-xs text-slate-400">Original ECU/TCU files and datalogs attached to this order. Only antivirus-cleared files can be downloaded.</p>
+                  {(selected.order_files?.filter(file => file.kind === "customer_original") ?? []).length === 0 ? (
+                    <p className="mt-3 text-sm text-amber-300">No customer original file is attached to this order. Ask the customer to finish their upload before requesting payment.</p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {selected.order_files?.filter(file => file.kind === "customer_original").map(file => (
+                        <div key={file.id} className="rounded-lg border border-white/10 p-3">
+                          <p className="break-all text-sm text-white">{file.original_filename}</p>
+                          <p className="mt-1 text-xs text-slate-400">Scan: {label(file.scan_status)} · {(file.size_bytes / 1024).toFixed(1)} KB</p>
+                          {file.scan_status === "clean" ? <button type="button" className={secondaryButton + " mt-2"} onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/admin/files/${encodeURIComponent(file.id)}/download`, { credentials: "same-origin" });
+                              const data = await res.json();
+                              if (!res.ok || !data.url) throw new Error(data.error || "Download unavailable");
+                              window.location.assign(data.url);
+                            } catch (e) { setError(e instanceof Error ? e.message : "Download failed"); }
+                          }}>Download cleared original</button> : <p className="mt-2 text-xs text-amber-300">Download locked until safety check passes.</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {selected.payment_status === "paid" &&
