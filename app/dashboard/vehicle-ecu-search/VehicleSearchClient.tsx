@@ -41,7 +41,7 @@ export default function VehicleSearchClient(){
   {result&&<><section className="card">
    <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"baseline"}}><h2>Search results</h2><strong>{result.totalCount} matching records · Page {result.page}</strong></div>
    <p style={{fontSize:13,color:"#b3c5d5"}}>The results come from two separate sources: a dated manufacturer-published FLEX list and the existing JCS vehicle catalogue. Multiple ECUs may be listed for one engine.</p>
-   {result.references.length===0&&result.candidateVehicles.length===0?<p>No matching vehicle references yet. Try engine code or ECU family instead, or consult the manufacturers' current vehicle lists below.</p>:null}
+   {result.references.length===0&&result.candidateVehicles.length===0?<p>No matching vehicle references yet. Try engine code or ECU family instead, or consult the manufacturers&apos; current vehicle lists below.</p>:null}
    {result.references.length>0&&<><h3>Manufacturer-published vehicle references ({result.references.length})</h3>
    <div style={{display:"grid",gap:12}}>{result.references.map((r,i)=><article className="order-entry" key={i} style={{padding:16}}>
     <div style={{display:"flex",gap:8,justifyContent:"space-between",flexWrap:"wrap",alignItems:"start"}}><div><strong>{r.make} {r.model} {r.generation||""}</strong><p style={{margin:"5px 0"}}>{r.engine_label||"Engine not specified"} {r.engine_code&&<>· <strong>{r.engine_code}</strong></>} {r.power_ps!=null&&<>· {r.power_ps} PS</>}</p></div><Status>Historical manufacturer listing · {r.source_year||"year unknown"}</Status></div>
