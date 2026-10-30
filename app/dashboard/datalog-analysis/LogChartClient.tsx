@@ -27,14 +27,14 @@ export default function LogChartClient(){
  },[data,x,y,target]);
  async function read(file?:File){setData(null);setError("");if(!file)return;try{if(file.size>limit)throw Error("Maximum CSV size is 8 MB.");if(!/\.(csv|log|txt)$/i.test(file.name))throw Error("Choose a CSV, LOG or TXT file.");const parsed=parseLog(await file.text(),file.name);setData(parsed);setX(0);setY(Math.min(1,parsed.headers.length-1));setTarget(-1);}catch(e){setError(e instanceof Error?e.message:"Cannot read this log.");}}
  return <section className="card" style={{marginBottom:20}}>
-  <h2>Local datalog graph analyser</h2><p>Visualise numeric data from a VCDS or other logger export. The file stays on your device and is not sent to JCS. Units depend on the logger; charts do not establish safe limits or diagnose faults automatically.</p>
-  <input type="file" accept=".csv,.log,.txt" onChange={e=>void read(e.target.files?.[0])}/>
+  <h2>Datalog graph analyser</h2><p>Visualise channels from a VCDS or other logger export. Analysis runs locally in your browser; no file is uploaded.</p>
+  <div className="field"><label htmlFor="local-datalog">Log file · CSV, LOG or TXT (up to 8 MB)</label><input id="local-datalog" type="file" accept=".csv,.log,.txt" onChange={e=>void read(e.target.files?.[0])}/></div>
   {error&&<p role="alert">{error}</p>}
   {data&&<><p><strong>{data.fileName}</strong> — {data.rows.length} samples · {data.dropped} skipped rows</p>
-   <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-    <label>X axis <select value={x} onChange={e=>setX(Number(e.target.value))}>{data.headers.map((h,i)=><option key={i} value={i}>{h}</option>)}</select></label>
-    <label>Actual channel <select value={y} onChange={e=>setY(Number(e.target.value))}>{data.headers.map((h,i)=><option key={i} value={i}>{h}</option>)}</select></label>
-    <label>Requested channel <select value={target} onChange={e=>setTarget(Number(e.target.value))}><option value={-1}>None</option>{data.headers.map((h,i)=><option key={i} value={i}>{h}</option>)}</select></label>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginTop:16}}>
+    <label className="field">X axis <select value={x} onChange={e=>setX(Number(e.target.value))}>{data.headers.map((h,i)=><option key={i} value={i}>{h}</option>)}</select></label>
+    <label className="field">Actual channel <select value={y} onChange={e=>setY(Number(e.target.value))}>{data.headers.map((h,i)=><option key={i} value={i}>{h}</option>)}</select></label>
+    <label className="field">Requested channel <select value={target} onChange={e=>setTarget(Number(e.target.value))}><option value={-1}>None</option>{data.headers.map((h,i)=><option key={i} value={i}>{h}</option>)}</select></label>
    </div>
    {plot?<><svg viewBox="0 0 780 290" role="img" aria-label={`Graph of ${data.headers[y]} against ${data.headers[x]}`} style={{width:"100%",height:"auto",background:"#101c2a",borderRadius:12,marginTop:12}}>
     <path d="M50 30 V245 H740" stroke="#94a3b8" fill="none"/><path d={plot.actual} fill="none" stroke="#38bdf8" strokeWidth="2"/>{plot.requested&&<path d={plot.requested} fill="none" stroke="#f59e0b" strokeWidth="2"/>}
