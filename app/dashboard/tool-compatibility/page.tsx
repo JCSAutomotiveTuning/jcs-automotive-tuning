@@ -9,20 +9,17 @@ export default function Tools(){
  const [error,setError]=useState(""),[busy,setBusy]=useState(false),[searched,setSearched]=useState(false);
  const [verifiedOnly,setVerifiedOnly]=useState(false),[method,setMethod]=useState("all");
  async function search(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");setSearched(false);try{
- const [r,vehicleResponse]=await Promise.all([
-  fetch("/api/ecu-tool-compatibility?"+new URLSearchParams({family}),{cache:"no-store"}),
-  fetch("/api/vehicle-ecu-search?"+new URLSearchParams({q:family}),{cache:"no-store"})
- ]);
- const [d,vehicleData]=await Promise.all([r.json(),vehicleResponse.json()]);
- if(!r.ok||!vehicleResponse.ok)throw Error(d.error||vehicleData.error||"Lookup failed");
+ const vehicleResponse=await fetch("/api/vehicle-ecu-search?"+new URLSearchParams({q:family}),{cache:"no-store"});
+ const vehicleData=await vehicleResponse.json();
+ if(!vehicleResponse.ok)throw Error(vehicleData.error||"Lookup failed");
  const sourced=(vehicleData.references||[]).map((v:{ecu_family:string;tool_name:string;connection_method:string;read_capability:string;write_capability:string;make:string;model:string;engine_code:string|null;source_year:number|null;source_url:string})=>({
   ecu_family:v.ecu_family,tool_name:v.tool_name,method:v.connection_method,
   protocol:`Read: ${v.read_capability}; Write: ${v.write_capability}`,
   verified:false,source_url:v.source_url,
   notes:`${v.make} ${v.model} ${v.engine_code||""} — historical vendor connection listing (${v.source_year||"undated"}). Confirm exact ECU and current manufacturer protocol before reading or writing.`
  }));
- setMatches([...(d.matches||[]),...sourced]);
- setVehicles([...(d.vehicleReferences||[]),...(vehicleData.candidateVehicles||[])]);
+ setMatches([...(vehicleData.familyProtocolReferences||[]),...sourced]);
+ setVehicles(vehicleData.candidateVehicles||[]);
  setSearched(true);
  }catch(e){setError(e instanceof Error?e.message:"Lookup failed");}finally{setBusy(false);}}
  return <main className="wrap"><nav className="nav"><Link className="brand" href="/dashboard">JCS <span>PORTAL</span></Link><Link className="btn secondary" href="/dashboard">Dashboard</Link></nav>
