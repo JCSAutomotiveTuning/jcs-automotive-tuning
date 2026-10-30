@@ -3,7 +3,7 @@ import {FormEvent,useState} from "react";
 type RefRow={make:string;model:string;generation:string|null;engine_code:string|null;engine_label:string|null;power_ps:number|null;listed_year:number|null;ecu_manufacturer:string|null;ecu_family:string;tool_name:string;connection_method:string;read_capability:string;write_capability:string;coverage_status:string;source_url:string;source_label:string;source_year:number|null;ecu_hw_id:string|null;ecu_sw_id:string|null;mcu:string|null;fuel_type:string|null;tool_protocol:string|null;software_package:string|null;unlock_required:boolean|null;source_checked_at:string|null;technician_notes:string|null};
 type Candidate={make:string;model:string;model_year_from:number|null;model_year_to:number|null;engine_code:string|null;engine_description:string|null;ecu_manufacturer:string|null;ecu_family:string|null;ecu_part_number:string|null;ecu_hw_id:string|null;ecu_sw_id:string|null;verified:boolean;source_url:string|null;verification_notes:string|null};
 type FamilyTool={ecu_family:string;tool_name:string;method:string;protocol:string;verified:boolean;notes:string;source_url:string};
-type Results={references:RefRow[];candidateVehicles:Candidate[];familyProtocolReferences:FamilyTool[];count:number;totalCount:number;page:number;hasMore:boolean;capped:boolean;disclaimer:string};
+type Results={quota?:{remaining:number;daily_limit:number;reset_at:string};references:RefRow[];candidateVehicles:Candidate[];familyProtocolReferences:FamilyTool[];count:number;totalCount:number;page:number;hasMore:boolean;capped:boolean;disclaimer:string};
 const brands=["","Volkswagen","Audi","SEAT","Skoda","BMW","Ford","Peugeot","Alfa Romeo","Abarth","Mercedes-Benz","Renault","Citroen","Opel","Fiat","Volvo","Hyundai","Nissan"];
 const presets=["AXR","ASZ","BLT","ARL","BPX","PD130","CAYC","BKD","MED9.1","EDC17C46","N47"];
 function Status({children}:{children:React.ReactNode}){return <small style={{border:"1px solid #37516a",borderRadius:6,padding:"3px 8px",color:"#bcd5e9"}}>{children}</small>;}
@@ -23,7 +23,7 @@ export default function VehicleSearchClient(){
  return <div style={{display:"grid",gap:20,paddingBottom:32}}>
   <section className="card">
    <h2>Search vehicles and ECU types</h2>
-   <p style={{opacity:.8}}>Search vehicle, model, engine code, ECU family or part number. Exact ECU identification is always required before programming.</p>
+   <p style={{opacity:.8}}>Customers have 5 shared ECU/tool/vehicle searches per day, resetting at midnight UK time. Each new search or results page counts once. Exact ECU identification is required before programming.</p>
    <form onSubmit={submit}>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:14}}>
      <div className="field"><label htmlFor="veh-search">Vehicle / engine / ECU</label><input id="veh-search" value={q} onChange={e=>setQ(e.target.value)} maxLength={70} placeholder="Golf, AXR, 03L906022, EDC17"/></div>
@@ -40,6 +40,7 @@ export default function VehicleSearchClient(){
   {error&&<p role="alert" className="card" style={{color:"#ffb7b7"}}>{error}</p>}
   {result&&<><section className="card">
    <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"baseline"}}><h2>Search results</h2><strong>{result.totalCount} matching records · Page {result.page}</strong></div>
+   {result.quota&&<p role="status"><strong>{result.quota.remaining} of {result.quota.daily_limit} daily searches remaining</strong> · Resets at midnight UK time. Admins are exempt.</p>}
    <p style={{fontSize:13,color:"#b3c5d5"}}>The results come from two separate sources: a dated manufacturer-published FLEX list and the existing JCS vehicle catalogue. Multiple ECUs may be listed for one engine.</p>
    {result.references.length===0&&result.candidateVehicles.length===0?<p>No matching vehicle references yet. Try engine code or ECU family instead, or consult the manufacturers&apos; current vehicle lists below.</p>:null}
    {result.references.length>0&&<><h3>Manufacturer-published vehicle references ({result.references.length})</h3>
