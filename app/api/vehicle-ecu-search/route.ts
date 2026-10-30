@@ -5,7 +5,7 @@ import {sourcedMatches} from "@/lib/sourced-tool-matches";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
-const matchKeys=["make","model","generation","engine_code","engine_label","ecu_family","ecu_manufacturer","tool_name"];
+const matchKeys=["make","model","generation","engine_code","engine_label","ecu_family","ecu_manufacturer","tool_name","ecu_hw_id","ecu_sw_id","tool_protocol","mcu"];
 const legacyKeys=["make","model","engine_code","engine_description","ecu_family","ecu_part_number","ecu_hw_id","ecu_sw_id"];
 // PostgREST .or() string syntax: allow safe search characters, not query operators/commas/wildcards.
 export function cleanVehicleSearch(value:string){return value.trim().slice(0,70).replace(/[^a-zA-Z0-9\s.+/\-]/g,"").replace(/\s+/g," ").trim();}
