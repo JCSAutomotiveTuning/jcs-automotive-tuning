@@ -119,6 +119,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     ? await supabase.from("deposit_wallets").select("balance_pence").eq("user_id", user.id).maybeSingle()
     : { data: null };
 
+  const { data: depositEvents, error: depositEventsError } = depositsEnabled
+    ? await supabase.from("deposit_wallet_events")
+        .select("id,amount_pence,transaction_type,description,created_at,order_id")
+        .eq("user_id",user.id)
+        .order("created_at",{ascending:false}).limit(8)
+    : {data:[],error:null};
+  if(depositEventsError)console.error("Deposit wallet history unavailable:",depositEventsError.message);
+
   if (ordersError) {
     console.error("Dashboard order lookup failed:", ordersError.message);
   }
@@ -175,7 +183,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <p>Orders shown: latest 50. Order and payment details are available below.</p>
         </div>
       </section>
-      {depositsEnabled && <DepositWalletPanel balancePence={depositWallet?.balance_pence ?? 0} />}
+      {depositsEnabled && <DepositWalletPanel balancePence={depositWallet?.balance_pence ?? 0} events={depositEvents ?? []} />}
       <div className="jcs-section-heading"><div><span className="eyebrow">File services</span><h2>Manage your tuning jobs</h2></div><span className="pill">Private customer workspace</span></div>
       <div className="two">
         <section id="upload-tuning-file" className="card" style={{ scrollMarginTop: 24 }}>
