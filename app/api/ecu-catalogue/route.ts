@@ -1,3 +1,4 @@
+import {chargeSearch} from "@/lib/customer-search-quota";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
     if (!id || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) return NextResponse.json({ error: "Invalid vehicle selection." }, { status: 400 });
     url.searchParams.set(config.param, id);
   }
+  if(step==="vehicle") {const {blocked}=await chargeSearch();if(blocked)return blocked;}
   try {
     const response = await fetch(url.toString(), {
       headers: { "X-API-Key": key, "Accept": "application/json" },
