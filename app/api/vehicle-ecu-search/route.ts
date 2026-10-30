@@ -28,14 +28,14 @@ export async function GET(req:NextRequest){
  let referenceQuery=db.from("vehicle_ecu_references")
  .select("make,model,generation,engine_code,engine_label,power_ps,listed_year,ecu_manufacturer,ecu_family,tool_name,connection_method,read_capability,write_capability,coverage_status,source_url,source_label,source_year",{count:"exact"})
  .order("make").order("model").range((page-1)*pageSize,page*pageSize-1);
- if(pdAliases[q.toUpperCase()])referenceQuery=referenceQuery.in("engine_code",pdAliases[q.toUpperCase()]);
+ if(pdAliases[q.toUpperCase()])referenceQuery=referenceQuery.or(pdAliases[q.toUpperCase()].map(code=>`engine_code.ilike.%${code}%`).join(","));
  else for(const token of tokens)referenceQuery=referenceQuery.or(matchKeys.map(k=>`${k}.ilike.%${token}%`).join(","));
  if(make)referenceQuery=referenceQuery.ilike("make",make);
  if(method!=="all")referenceQuery=referenceQuery.eq("connection_method",method);
  let legacyQuery=db.from("ecu_catalogue")
  .select("make,model,model_year_from,model_year_to,engine_code,engine_description,ecu_manufacturer,ecu_family,ecu_part_number,ecu_hw_id,ecu_sw_id,verified,source_url,verification_notes",{count:"exact"})
  .order("make").order("model").range((page-1)*pageSize,page*pageSize-1);
- if(pdAliases[q.toUpperCase()])legacyQuery=legacyQuery.in("engine_code",pdAliases[q.toUpperCase()]);
+ if(pdAliases[q.toUpperCase()])legacyQuery=legacyQuery.or(pdAliases[q.toUpperCase()].map(code=>`engine_code.ilike.%${code}%`).join(","));
  else for(const token of tokens)legacyQuery=legacyQuery.or(legacyKeys.map(k=>`${k}.ilike.%${token}%`).join(","));
  if(make)legacyQuery=legacyQuery.ilike("make",make);
  const [reference,legacy]=await Promise.all([referenceQuery,legacyQuery]);
