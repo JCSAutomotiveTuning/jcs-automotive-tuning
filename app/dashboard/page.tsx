@@ -297,7 +297,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                       </ol>
                     )}
 
-                    {canPay && <OrderPaymentButton orderId={o.id} />}
+                    {canPay && <OrderPaymentButton orderId={o.id} bankEnabled={!!process.env.JCS_BANK_ACCOUNT_NAME && /^\\d{6}$/.test((process.env.JCS_BANK_SORT_CODE||"").replace(/\\D/g,"")) && /^\\d{8}$/.test((process.env.JCS_BANK_ACCOUNT_NUMBER||"").replace(/\\D/g,""))} />}
 
                      {canResumeUpload && (
                        <ResumeUpload orderId={o.id} />
