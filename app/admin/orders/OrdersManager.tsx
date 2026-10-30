@@ -95,6 +95,8 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   const [busy, setBusy] = useState<"save" | "quote" | "payment" | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [bankReference,setBankReference]=useState("");
+  const [bankConfirming,setBankConfirming]=useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [refunding, setRefunding] = useState(false);
   const [releasingDeposit, setReleasingDeposit] = useState(false);
@@ -142,6 +144,20 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
     const csv=[fields,...rows].map(row=>row.map(safe).join(",")).join("\r\n");
     const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
     const link=document.createElement("a");link.href=url;link.download="jcs-orders-filtered.csv";link.click();URL.revokeObjectURL(url);
+  }
+
+  async function confirmBankReceipt(){
+    if(!selected||bankConfirming||bankReference.trim().length<3)return;
+    if(!window.confirm("Only continue if you have personally verified the full outstanding amount has cleared in your business bank account. Mark this order paid?"))return;
+    setBankConfirming(true);setError("");setSuccess("");
+    try{
+      const response=await fetch("/api/admin/orders/bank-transfer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:selected.id,bankReference:bankReference.trim()})});
+      const data=await response.json();
+      if(!response.ok)throw Error(data.error||"Could not confirm transfer");
+      setOrders(prev=>prev.map(o=>o.id===selected.id?{...o,payment_status:"paid"}:o));
+      setBankReference("");setSuccess("Bank receipt confirmed and payment marked paid. File release still requires the existing QA and file safety checks.");
+    }catch(e){setError(e instanceof Error?e.message:"Bank confirmation failed");}
+    finally{setBankConfirming(false);}
   }
 
   function choose(order: Order) {
@@ -307,6 +323,11 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
 
   return (
     <AdminArea active="orders" title="Order management" description="Your tuning workshop queue. Review jobs, manage custom quotes and keep customers' ECU and TCU orders progressing.">
+      {selected?.status==="awaiting_payment"&&selected.payment_status==="unpaid"&&<section className="mb-4 rounded-xl border border-sky-500/30 bg-sky-500/[0.06] p-4">
+       <h3 className="text-sm font-bold text-white">Manual bank transfer reconciliation</h3>
+       <p className="my-2 text-xs text-slate-300">Only confirm after matching the order, exact outstanding amount and reference against cleared funds in your business bank account. This does not bypass completed-file scan and QA approval.</p>
+       <div className="flex flex-wrap gap-2"><input className={inputStyle+" max-w-sm"} value={bankReference} maxLength={120} placeholder="Actual bank transaction reference" onChange={e=>setBankReference(e.target.value)} aria-label="Bank transaction reference"/><button type="button" className={primaryButton} onClick={()=>void confirmBankReceipt()} disabled={bankConfirming||bankReference.trim().length<3}>{bankConfirming?"Confirming…":"Confirm received bank transfer"}</button></div>
+      </section>}
       <div className="mb-4 flex justify-end"><button type="button" onClick={exportFilteredOrders} className={secondaryButton} disabled={filtered.length===0}>Export filtered orders (CSV)</button></div>
       <section className="relative mb-6 overflow-hidden rounded-3xl border border-sky-400/15 bg-gradient-to-br from-[#172439] via-[#111c2b] to-[#0e1520] px-5 py-6 sm:px-7 sm:py-8">
         <div aria-hidden="true" className="pointer-events-none absolute -right-14 -top-24 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
