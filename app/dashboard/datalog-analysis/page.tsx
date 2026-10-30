@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LogChartClient from "./LogChartClient";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,6 +31,7 @@ export default async function DatalogAnalysisPage() {
         <p>File submission is included in the service price. A separate wallet top-up is not required. Payment is requested only after JCS checks the uploaded file.</p>
       </div>
     </section>
+    <LogChartClient />
     <section className="card" style={{marginBottom:20}}>
       <h2>What you can request</h2>
       <div className="grid">
