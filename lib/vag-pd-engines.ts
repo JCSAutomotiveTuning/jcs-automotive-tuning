@@ -10,6 +10,7 @@ export const PD_ENGINES=[
  {code:"BPX",label:"PD160 Ibiza Cupra",ecu:"EDC15P+",power:160},
  {code:"BUK",label:"PD160 Ibiza Cupra",ecu:"EDC15P+",power:160},
 ] as const;
+export function pdEngineWarning(q:string){const v=q.trim().toUpperCase().replace(/[^A-Z0-9]/g,"");return v==="PD110"?"Most VAG 1.9 TDI 110 PS engines use a rotary injection pump, not PD. Confirm engine code (e.g. AHF/ASV) and ECU before selecting EDC15P+.":null;}
 export function lookupPdEngine(q:string){
  const normalized=q.trim().toUpperCase().replace(/[^A-Z0-9+]/g,"");
  const hits=PD_ENGINES.filter(e=>e.code===normalized);
