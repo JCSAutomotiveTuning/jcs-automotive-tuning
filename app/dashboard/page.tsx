@@ -303,14 +303,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                        <ResumeUpload orderId={o.id} />
                      )}
 
-                    {o.status === "awaiting_review" &&
-                      o.payment_status === "unpaid" &&
-                      o.amount_pence === 0 && (
-                        <p className="order-detail">
-                          Your order is awaiting review and a price confirmation.
-                          No payment is due yet.
-                        </p>
-                      )}
+                    {o.status === "awaiting_review" && o.payment_status === "unpaid" && (
+                      <p className="order-detail" role="status">
+                        {o.amount_pence === 0
+                          ? "Your order is awaiting review and a confirmed quote. No payment is due yet."
+                          : "Payment will become available here once JCS reviews your uploaded file, confirms the price and requests payment."}
+                      </p>
+                    )}
 
                     <div className="order-meta">
                       <span>Order #{o.id.slice(0, 8)}</span>
