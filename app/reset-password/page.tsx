@@ -16,8 +16,10 @@ export default function ResetPasswordPage() {
     let active = true;
 
     async function verifyResetLink() {
-      const supabase = createClient();
       const url = new URL(window.location.href);
+      const failed = url.searchParams.get("error");
+      if (failed === "invalid_link") { if (active) setMessage("This password reset link has expired or was already used. Request a fresh link."); return; }
+      const supabase = createClient();
       const code = url.searchParams.get("code");
       const hash = new URLSearchParams(
         url.hash.startsWith("#") ? url.hash.slice(1) : url.hash
@@ -68,7 +70,7 @@ export default function ResetPasswordPage() {
           setReady(false);
           setMessage(
             error instanceof Error
-              ? error.message
+              ? (/code verifier|pkce/i.test(error.message) ? "This older reset link was opened in a different browser or its verification cookie has been lost. Request a new password reset email." : error.message)
               : "Unable to verify the reset link. Request a new one."
           );
         }
@@ -177,9 +179,7 @@ export default function ResetPasswordPage() {
           </button>
         </form>
       ) : (
-        <p role="status" className="text-sm text-gray-600">
-          {message}
-        </p>
+        <div><p role="status" className="text-sm text-gray-600">{message}</p><a href="/forgot-password" className="mt-3 inline-block underline">Request a new reset link</a></div>
       )}
 
       {ready && message && (
