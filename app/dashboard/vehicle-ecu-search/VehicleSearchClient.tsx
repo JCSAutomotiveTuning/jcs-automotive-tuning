@@ -3,16 +3,16 @@ import {FormEvent,useState} from "react";
 type RefRow={make:string;model:string;generation:string|null;engine_code:string|null;engine_label:string|null;power_ps:number|null;listed_year:number|null;ecu_manufacturer:string|null;ecu_family:string;tool_name:string;connection_method:string;read_capability:string;write_capability:string;coverage_status:string;source_url:string;source_label:string;source_year:number|null};
 type Candidate={make:string;model:string;model_year_from:number|null;model_year_to:number|null;engine_code:string|null;engine_description:string|null;ecu_manufacturer:string|null;ecu_family:string|null;ecu_part_number:string|null;ecu_hw_id:string|null;ecu_sw_id:string|null;verified:boolean;source_url:string|null;verification_notes:string|null};
 type FamilyTool={ecu_family:string;tool_name:string;method:string;protocol:string;verified:boolean;notes:string;source_url:string};
-type Results={references:RefRow[];candidateVehicles:Candidate[];familyProtocolReferences:FamilyTool[];count:number;capped:boolean;disclaimer:string};
+type Results={references:RefRow[];candidateVehicles:Candidate[];familyProtocolReferences:FamilyTool[];count:number;totalCount:number;page:number;hasMore:boolean;capped:boolean;disclaimer:string};
 const brands=["","Volkswagen","Audi","SEAT","Skoda","BMW","Ford","Peugeot","Alfa Romeo","Abarth","Mercedes-Benz","Renault","Citroen","Opel","Fiat","Volvo","Hyundai","Nissan"];
 const presets=["AXR","ASZ","BLT","ARL","BPX","PD130","CAYC","BKD","MED9.1","EDC17C46","N47"];
 function Status({children}:{children:React.ReactNode}){return <small style={{border:"1px solid #37516a",borderRadius:6,padding:"3px 8px",color:"#bcd5e9"}}>{children}</small>;}
 export default function VehicleSearchClient(){
  const [q,setQ]=useState(""),[make,setMake]=useState(""),[method,setMethod]=useState("all");
  const [result,setResult]=useState<Results|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);
- async function run(nextQ=q,nextMake=make,nextMethod=method){
+ async function run(nextQ=q,nextMake=make,nextMethod=method,nextPage=1){
   setBusy(true);setError("");setResult(null);
-  try{const params=new URLSearchParams({q:nextQ,make:nextMake,method:nextMethod});
+  try{const params=new URLSearchParams({q:nextQ,make:nextMake,method:nextMethod,page:String(nextPage)});
    const response=await fetch("/api/vehicle-ecu-search?"+params.toString(),{cache:"no-store"});
    const data=await response.json();
    if(!response.ok)throw Error(data.error||"Vehicle database unavailable");
@@ -39,7 +39,7 @@ export default function VehicleSearchClient(){
   </section>
   {error&&<p role="alert" className="card" style={{color:"#ffb7b7"}}>{error}</p>}
   {result&&<><section className="card">
-   <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"baseline"}}><h2>Search results</h2><strong>{result.count} records {result.capped?"(first results shown)":""}</strong></div>
+   <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"baseline"}}><h2>Search results</h2><strong>{result.totalCount} matching records · Page {result.page}</strong></div>
    <p style={{fontSize:13,color:"#b3c5d5"}}>The results come from two separate sources: a dated manufacturer-published FLEX list and the existing JCS vehicle catalogue. Multiple ECUs may be listed for one engine.</p>
    {result.references.length===0&&result.candidateVehicles.length===0?<p>No matching vehicle references yet. Try engine code or ECU family instead, or consult the manufacturers' current vehicle lists below.</p>:null}
    {result.references.length>0&&<><h3>Manufacturer-published vehicle references ({result.references.length})</h3>
@@ -59,6 +59,10 @@ export default function VehicleSearchClient(){
     <small>{v.verified?"Catalogue verified flag (confirm exact vehicle)":"Provisional, not ECU-verified"} {v.model_year_from&&`· Model listed from ${v.model_year_from}`}</small>
     {v.source_url&&<p><a href={v.source_url} target="_blank" rel="noopener noreferrer" style={{textDecoration:"underline"}}>Source reference</a></p>}
    </article>)}</div></>}
+   <div style={{display:"flex",gap:12,justifyContent:"space-between",marginTop:18}}>
+    <button className="btn secondary" type="button" disabled={busy||result.page<=1} onClick={()=>void run(q,make,method,result.page-1)}>Previous</button>
+    <button className="btn secondary" type="button" disabled={busy||!result.hasMore} onClick={()=>void run(q,make,method,result.page+1)}>Next page</button>
+   </div>
   </section>
   {result.familyProtocolReferences.length>0&&<section className="card"><h2>Additional ECU family tool references</h2>
    <p>Family-level protocol announcements only. They do not establish compatibility with a specific ECU hardware/software revision.</p>
