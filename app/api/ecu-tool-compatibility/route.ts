@@ -1,3 +1,4 @@
+import {chargeSearch} from "@/lib/customer-search-quota";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,6 +14,8 @@ export async function GET(req: NextRequest) {
   const safe = family.replace(/[%,_\\]/g, "");
   if (!safe) return NextResponse.json({ error: "Enter ECU family" }, { status: 400 });
 
+  const {blocked,quota}=await chargeSearch();
+  if(blocked)return blocked;
   const admin = createAdminClient();
   const [tools, vehicles] = await Promise.all([
     admin.from("ecu_tool_compatibility")
@@ -26,6 +29,7 @@ export async function GET(req: NextRequest) {
   if (vehicles.error) console.error("ECU catalogue lookup:", vehicles.error.message);
   const reference = toolDirectoryForFamily(safe);
   return NextResponse.json({
+    quota,
     matches: [...(tools.data || []), ...sourcedMatches(safe)],
     directory: reference.entries,
     familyRecognised: reference.familyRecognised,
