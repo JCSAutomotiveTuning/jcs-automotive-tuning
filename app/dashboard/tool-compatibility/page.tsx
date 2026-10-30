@@ -15,6 +15,7 @@ export default function Tools(){
  }catch(e){setError(e instanceof Error?e.message:"Lookup failed");}finally{setBusy(false);}}
  return <main className="wrap"><nav className="nav"><Link className="brand" href="/dashboard">JCS <span>PORTAL</span></Link><Link className="btn secondary" href="/dashboard">Dashboard</Link></nav>
  <section className="hero"><div className="eyebrow">Tuning tools</div><h1>Tool <em>compatibility.</em></h1><p>Search by ECU family. Confirm exact hardware/software and current official tool protocol support before attempting a read or write.</p></section>
+ <section className="card" style={{marginBottom:20}}><h2>Find ECU by vehicle</h2><p>Search by make, model, engine code or ECU family, with documented tool connections and sources.</p><Link className="btn" href="/dashboard/vehicle-ecu-search">Open Vehicle & ECU Finder</Link></section>
  <section className="card"><form onSubmit={search}><div className="field"><label htmlFor="family">ECU family</label><input id="family" required value={family} onChange={e=>setFamily(e.target.value)} placeholder="EDC16U31, MED9.1, EDC17"/></div><button className="btn" disabled={busy}>{busy?"Searching…":"Search compatibility"}</button></form>
  {error&&<p role="alert">{error}</p>}
  {searched&&<><div className="field" style={{display:"flex",alignItems:"end",gap:14,flexWrap:"wrap",margin:"20px 0"}}>
