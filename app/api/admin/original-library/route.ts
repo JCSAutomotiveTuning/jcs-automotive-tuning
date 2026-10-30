@@ -31,10 +31,20 @@ export async function GET() {
     db.from("original_file_catalog").select("file_id,hw_id,sw_id").limit(1000),
     db.from("original_file_library_exclusions").select("file_id").limit(10000),
   ]);
-  if (files.error || catalog.error || removed.error || !files.data || !catalog.data || !removed.data)
-    return NextResponse.json({ error: "File catalogue unavailable" }, { status: 503 });
+  if (files.error || !files.data) {
+    console.error("Original library source query failed", files.error?.code, files.error?.message);
+    return NextResponse.json({ error: "Original files could not be loaded." }, { status: 503 });
+  }
+  // A missing exclusion index must not cause deleted items to be shown again.
+  if (removed.error || !removed.data) {
+    console.error("Original library exclusion query failed", removed.error?.code, removed.error?.message);
+    return NextResponse.json({ error: "Library removal index unavailable." }, { status: 503 });
+  }
+  // Identifier metadata is optional; show unclassified entries if it is unavailable.
+  if (catalog.error || !catalog.data) console.error("Original library metadata query failed", catalog.error?.code, catalog.error?.message);
+  const catalogRows = catalog.data ?? [];
   // Never expose customer details or raw storage paths through this listing.
-  const meta = new Map(catalog.data.map(x => [x.file_id, x]));
+  const meta = new Map(catalogRows.map(x => [x.file_id, x]));
   const excluded = new Set(removed.data.map(x => x.file_id));
   const items = files.data.filter(f => !excluded.has(f.id)).map(f => {
     const m = meta.get(f.id);
@@ -48,7 +58,7 @@ export async function GET() {
   items.sort((a,b) => (a.category === b.category
     ? ((a.hwId ?? "").localeCompare(b.hwId ?? "") || (a.swId ?? "").localeCompare(b.swId ?? "") || b.createdAt.localeCompare(a.createdAt))
     : a.category === "identified" ? -1 : 1));
-  return NextResponse.json({ items, truncated: files.data.length === 1000 || catalog.data.length === 1000 }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ items, truncated: files.data.length === 1000 || catalogRows.length === 1000 }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function PATCH(req: Request) {
