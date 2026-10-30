@@ -21,7 +21,7 @@ const normalized=input.map((r,i)=>{
  if(!methods.has(r.connection_method))fail(i,"connection_method must be OBD, Bench, Boot or BDM");
  const read=r.read_capability??"unknown",write=r.write_capability??"unknown",status=r.coverage_status??"historic_vendor_list";
  if(!readKinds.has(read)||!writeKinds.has(write)||!grades.has(status))fail(i,"invalid read, write or coverage status");
- if(status==="exact_hw_sw_verified"&&!r.exact_ecu_evidence)fail(i,"exact HW/SW verification must be reviewed manually, not imported automatically");
+ if(status==="exact_hw_sw_verified")fail(i,"exact HW/SW verification requires individual technician review; bulk importer does not allow this status");
  const url=new URL(r.source_url);
  if(url.protocol!=="https:")fail(i,"https source URL required");
  if(r.source_url.length>500)fail(i,"source_url too long");
@@ -31,7 +31,7 @@ const normalized=input.map((r,i)=>{
  const code=typeof r.engine_code==="string"?r.engine_code.trim().slice(0,80):null;
  const key=[r.make,r.model,r.generation||"",code||r.engine_label||"",r.ecu_family,r.tool_name,r.connection_method].join("|").toLowerCase().replace(/[^a-z0-9|.+]/g,"").slice(0,240);
  if(!key)fail(i,"cannot create reference key");
- return {reference_key:key,make:r.make,model:r.model,generation:r.generation??null,engine_code:code,engine_label:r.engine_label??null,power_ps:r.power_ps??null,listed_year:year,ecu_manufacturer:r.ecu_manufacturer??null,ecu_family:r.ecu_family,tool_name:r.tool_name,connection_method:r.connection_method,read_capability:read,write_capability:write,coverage_status:status==="exact_hw_sw_verified"?"current_vendor_list":status,source_url:r.source_url,source_label:r.source_label,source_year:r.source_year??null};
+ return {reference_key:key,make:r.make,model:r.model,generation:r.generation??null,engine_code:code,engine_label:r.engine_label??null,power_ps:r.power_ps??null,listed_year:year,ecu_manufacturer:r.ecu_manufacturer??null,ecu_family:r.ecu_family,tool_name:r.tool_name,connection_method:r.connection_method,read_capability:read,write_capability:write,coverage_status:status,source_url:r.source_url,source_label:r.source_label,source_year:r.source_year??null,ecu_hw_id:r.ecu_hw_id??null,ecu_sw_id:r.ecu_sw_id??null,mcu:r.mcu??null,fuel_type:r.fuel_type??null,tool_protocol:r.tool_protocol??null,software_package:r.software_package??null,unlock_required:typeof r.unlock_required==="boolean"?r.unlock_required:null,source_checked_at:r.source_checked_at??null,technician_notes:r.technician_notes??null};
 });
 if(new Set(normalized.map(x=>x.reference_key)).size!==normalized.length)throw Error("Duplicate application+tool+connection records in input");
 console.log(`Validated ${normalized.length} records from ${new Set(normalized.map(x=>x.make)).size} makes. ${apply?"APPLY":"DRY RUN"}.`);
