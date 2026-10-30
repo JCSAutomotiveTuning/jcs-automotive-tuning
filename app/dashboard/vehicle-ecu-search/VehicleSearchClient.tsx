@@ -1,6 +1,6 @@
 "use client";
 import {FormEvent,useState} from "react";
-type RefRow={make:string;model:string;generation:string|null;engine_code:string|null;engine_label:string|null;power_ps:number|null;listed_year:number|null;ecu_manufacturer:string|null;ecu_family:string;tool_name:string;connection_method:string;read_capability:string;write_capability:string;coverage_status:string;source_url:string;source_label:string;source_year:number|null};
+type RefRow={make:string;model:string;generation:string|null;engine_code:string|null;engine_label:string|null;power_ps:number|null;listed_year:number|null;ecu_manufacturer:string|null;ecu_family:string;tool_name:string;connection_method:string;read_capability:string;write_capability:string;coverage_status:string;source_url:string;source_label:string;source_year:number|null;ecu_hw_id:string|null;ecu_sw_id:string|null;mcu:string|null;fuel_type:string|null;tool_protocol:string|null;software_package:string|null;unlock_required:boolean|null;source_checked_at:string|null;technician_notes:string|null};
 type Candidate={make:string;model:string;model_year_from:number|null;model_year_to:number|null;engine_code:string|null;engine_description:string|null;ecu_manufacturer:string|null;ecu_family:string|null;ecu_part_number:string|null;ecu_hw_id:string|null;ecu_sw_id:string|null;verified:boolean;source_url:string|null;verification_notes:string|null};
 type FamilyTool={ecu_family:string;tool_name:string;method:string;protocol:string;verified:boolean;notes:string;source_url:string};
 type Results={references:RefRow[];candidateVehicles:Candidate[];familyProtocolReferences:FamilyTool[];count:number;totalCount:number;page:number;hasMore:boolean;capped:boolean;disclaimer:string};
@@ -45,7 +45,11 @@ export default function VehicleSearchClient(){
    {result.references.length>0&&<><h3>Manufacturer-published vehicle references ({result.references.length})</h3>
    <div style={{display:"grid",gap:12}}>{result.references.map((r,i)=><article className="order-entry" key={i} style={{padding:16}}>
     <div style={{display:"flex",gap:8,justifyContent:"space-between",flexWrap:"wrap",alignItems:"start"}}><div><strong>{r.make} {r.model} {r.generation||""}</strong><p style={{margin:"5px 0"}}>{r.engine_label||"Engine not specified"} {r.engine_code&&<>· <strong>{r.engine_code}</strong></>} {r.power_ps!=null&&<>· {r.power_ps} PS</>}</p></div><Status>Historical manufacturer listing · {r.source_year||"year unknown"}</Status></div>
-    <p><strong>ECU:</strong> {r.ecu_manufacturer||"Not stated"} {r.ecu_family}</p>
+    <p><strong>ECU:</strong> {r.ecu_manufacturer||"Not stated"} {r.ecu_family} {r.mcu&&<>· MCU {r.mcu}</>}</p>
+    {(r.ecu_hw_id||r.ecu_sw_id)&&<p>HW: {r.ecu_hw_id||"Unlisted"} · SW: {r.ecu_sw_id||"Unlisted"}</p>}
+    {r.tool_protocol&&<p>Protocol: {r.tool_protocol}</p>}{r.software_package&&<p>Software package: {r.software_package}</p>}
+    {r.unlock_required!==null&&<p>Unlock required: {r.unlock_required?"Yes":"No recorded"}</p>}
+    {r.technician_notes&&<p>{r.technician_notes}</p>}
     <div style={{display:"flex",gap:9,alignItems:"center",flexWrap:"wrap",margin:"10px 0"}}><Status>{r.tool_name}</Status><Status>{r.connection_method}</Status><Status>Read: {r.read_capability==="unknown"?"not specified":r.read_capability}</Status><Status>Write: {r.write_capability==="unknown"?"not specified":r.write_capability}</Status></div>
     <p style={{fontSize:13,opacity:.85}}>Documented application year: {r.listed_year??"not stated"} (not a verified production range). Tool listing does not guarantee current licensed support or full ECU backup.</p>
     <a href={r.source_url} target="_blank" rel="noopener noreferrer" style={{textDecoration:"underline"}}>View original manufacturer list</a>
