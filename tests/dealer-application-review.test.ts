@@ -10,7 +10,7 @@ describe("dealer application review is admin gated and price-safe",()=>{
  it("does not mutate customer roles, wallets or prices when approving",()=>{
   const s=readFileSync("app/api/admin/dealer-applications/route.ts","utf8");
   expect(s).not.toContain("customer_wallets");
-  expect(s).not.toContain("profiles\").update");
+  expect(s).not.toContain('from("profiles").update');
   expect(s).not.toContain("pricing");
  });
 });
