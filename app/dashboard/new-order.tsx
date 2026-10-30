@@ -29,6 +29,7 @@ export default function NewOrder({ initialService = "ecu_stage1" }: { initialSer
   const [fuel,setFuel] = useState<"petrol"|"diesel">("petrol");
   const [addons,setAddons] = useState<string[]>([]);
   const [notes,setNotes] = useState("");
+  const [tcuConfig,setTcuConfig] = useState({gearbox:"",launchRpm:"",torqueNm:"",shiftMode:"retain",manualMode:"retain",kickdown:"retain",comments:""});
   const [dtcReview,setDtcReview] = useState(false);
   const [dtcInput,setDtcInput] = useState("");
 
@@ -120,7 +121,9 @@ export default function NewOrder({ initialService = "ecu_stage1" }: { initialSer
           body: JSON.stringify({
             ...payload,
             serviceCode: service,
-            notes,
+            notes: (notes + (["dsg_tcu","custom_tcu","ecu_tcu_package"].includes(service) ?
+              "\\n\\nTCU request (subject to gearbox verification): " +
+              JSON.stringify(tcuConfig) : "")).slice(0,2500),
             addons: visibleAddons,
             fuelType: showEcu ? fuel : null,
             dtcReview,
@@ -261,6 +264,17 @@ export default function NewOrder({ initialService = "ecu_stage1" }: { initialSer
         </div>}
       </fieldset>
       <p style={{fontSize:13,opacity:.8}}>Original (ORI/stock) file sourcing is £30 per requested controller, subject to an exact compatible hardware/software match and availability. JCS will confirm suitability before supply. Add-ons are requests, not guaranteed features. Availability, safety and legal road-use compliance are reviewed before work begins.</p>
+    </section>}
+    {["dsg_tcu","custom_tcu","ecu_tcu_package"].includes(service) && <section className="notice">
+      <h3>TCU tuning request builder</h3>
+      <p>Requested settings are specifications for technician review, not a guarantee of gearbox support or safe operation. Leave optional values blank to retain the current calibration.</p>
+      <div className="field"><label>Gearbox identification</label><input maxLength={80} value={tcuConfig.gearbox} onChange={e=>setTcuConfig(v=>({...v,gearbox:e.target.value}))} placeholder="DQ250 02E / ZF 6HP / transmission code"/></div>
+      <div className="field"><label>Requested launch RPM (optional)</label><input type="number" min="1000" max="6000" step="50" value={tcuConfig.launchRpm} onChange={e=>setTcuConfig(v=>({...v,launchRpm:e.target.value}))}/></div>
+      <div className="field"><label>Requested torque limit in Nm (optional)</label><input type="number" min="100" max="1200" step="10" value={tcuConfig.torqueNm} onChange={e=>setTcuConfig(v=>({...v,torqueNm:e.target.value}))}/></div>
+      <div className="field"><label>Shift behaviour</label><select value={tcuConfig.shiftMode} onChange={e=>setTcuConfig(v=>({...v,shiftMode:e.target.value}))}><option value="retain">Retain current</option><option value="comfort">Comfort / smooth</option><option value="sport">Sport / faster shifts</option></select></div>
+      <div className="field"><label>Manual mode upshift</label><select value={tcuConfig.manualMode} onChange={e=>setTcuConfig(v=>({...v,manualMode:e.target.value}))}><option value="retain">Retain current</option><option value="request-no-autoupshift">Request no auto-upshift (review required)</option></select></div>
+      <div className="field"><label>Kickdown behaviour</label><select value={tcuConfig.kickdown} onChange={e=>setTcuConfig(v=>({...v,kickdown:e.target.value}))}><option value="retain">Retain current</option><option value="request-disable">Request disabling (review required)</option></select></div>
+      <div className="field"><label>Additional gearbox symptoms / goals</label><textarea maxLength={400} value={tcuConfig.comments} onChange={e=>setTcuConfig(v=>({...v,comments:e.target.value}))}/></div>
     </section>}
     <section>
       <h3>4. Job notes and file uploads</h3>
