@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toolDirectoryForFamily } from "@/lib/ecu-tool-directory";
 import { sourcedMatches } from "@/lib/sourced-tool-matches";
+import { lookupPdEngine, pdEngineWarning } from "@/lib/vag-pd-engines";
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -24,9 +25,13 @@ export async function GET(req: NextRequest) {
   ]);
   if (tools.error) console.error("Tool compatibility database lookup:", tools.error.message);
   if (vehicles.error) console.error("ECU catalogue lookup:", vehicles.error.message);
-  const reference = toolDirectoryForFamily(safe);
+  const engineMatches = lookupPdEngine(safe);
+  const resolvedFamily = engineMatches.length ? "EDC15P+" : safe;
+  const reference = toolDirectoryForFamily(resolvedFamily);
   return NextResponse.json({
-    matches: [...(tools.data || []), ...sourcedMatches(safe)],
+    matches: [...(tools.data || []), ...sourcedMatches(resolvedFamily)],
+    engineMatches,
+    engineWarning: pdEngineWarning(safe),
     directory: reference.entries,
     familyRecognised: reference.familyRecognised,
     vehicleReferences: vehicles.data || [],
