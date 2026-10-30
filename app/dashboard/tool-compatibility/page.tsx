@@ -31,7 +31,7 @@ export default function Tools(){
   <h2>ECU/TCU family reference</h2>
   <p style={{opacity:.8}}>Common families: {ECU_FAMILIES.join(" · ")}</p>
   <h2>Read/write tool directory ({TOOL_DIRECTORY.length})</h2>
-  <p>Reference list only. Individual read, write, OBD, bench and boot support must be checked against the exact ECU hardware/software and manufacturer's protocol list.</p>
+  <p>Reference list only. Individual read, write, OBD, bench and boot support must be checked against the exact ECU hardware/software and manufacturer&apos;s protocol list.</p>
   <div className="grid">{TOOL_DIRECTORY.map(t=><article className="order-entry" key={t.name} style={{padding:16}}>
    <h3>{t.name}</h3><p>{t.category}</p><small>{t.methods}</small>
    {t.source&&<p><a href={t.source} target="_blank" rel="noopener noreferrer" style={{textDecoration:"underline"}}>Official/reference website</a></p>}
