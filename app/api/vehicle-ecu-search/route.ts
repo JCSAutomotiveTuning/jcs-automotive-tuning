@@ -2,21 +2,20 @@ import { NextRequest,NextResponse } from "next/server";
 import {createClient} from "@/lib/supabase/server";
 import {createAdminClient} from "@/lib/supabase/admin";
 import {sourcedMatches} from "@/lib/sourced-tool-matches";
+import {cleanVehicleSearch,pdAliases,vehicleSearchTokens} from "@/lib/vehicle-ecu-search";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const matchKeys=["make","model","generation","engine_code","engine_label","ecu_family","ecu_manufacturer","tool_name","ecu_hw_id","ecu_sw_id","tool_protocol","mcu"];
 const legacyKeys=["make","model","engine_code","engine_description","ecu_family","ecu_part_number","ecu_hw_id","ecu_sw_id"];
 // PostgREST .or() string syntax: allow safe search characters, not query operators/commas/wildcards.
-export function cleanVehicleSearch(value:string){return value.trim().slice(0,70).replace(/[^a-zA-Z0-9\s.+/\-]/g,"").replace(/\s+/g," ").trim();}
 const brands=["Audi","Volkswagen","SEAT","Skoda","BMW","Ford","Peugeot","Alfa Romeo","Abarth","Mercedes-Benz","Renault","Citroen","Opel","Fiat","Volvo","Hyundai","Nissan"];
-const pdAliases:Record<string,string[]>={PD100:["AXR","ATD","AVB","BEW"],PD115:["AJM","AUY"],PD130:["ASZ","BLT","AVF","AWX"],PD150:["ARL"],PD160:["BPX","BUK"],PD110:["AHF","ASV"]};
 export async function GET(req:NextRequest){
  const auth=await createClient();
  const {data:{user}}=await auth.auth.getUser();
  if(!user)return NextResponse.json({error:"Sign in required"},{status:401});
  const q=cleanVehicleSearch(req.nextUrl.searchParams.get("q")||"");
- const tokens=q.toUpperCase()==="VW"?["Volkswagen"]:q.split(" ").filter(Boolean).map(t=>t.toUpperCase()==="VW"?"Volkswagen":t.toUpperCase().startsWith("EDC15P")?"EDC15P":t);
+ const tokens=vehicleSearchTokens(q);
  const make=cleanVehicleSearch(req.nextUrl.searchParams.get("make")||"");
  const method=req.nextUrl.searchParams.get("method")||"all";
  const page=Number(req.nextUrl.searchParams.get("page")||"1");
