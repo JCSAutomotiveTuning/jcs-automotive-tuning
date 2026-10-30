@@ -4,8 +4,8 @@ type RefRow={make:string;model:string;generation:string|null;engine_code:string|
 type Candidate={make:string;model:string;model_year_from:number|null;model_year_to:number|null;engine_code:string|null;engine_description:string|null;ecu_manufacturer:string|null;ecu_family:string|null;ecu_part_number:string|null;ecu_hw_id:string|null;ecu_sw_id:string|null;verified:boolean;source_url:string|null;verification_notes:string|null};
 type FamilyTool={ecu_family:string;tool_name:string;method:string;protocol:string;verified:boolean;notes:string;source_url:string};
 type Results={references:RefRow[];candidateVehicles:Candidate[];familyProtocolReferences:FamilyTool[];count:number;capped:boolean;disclaimer:string};
-const brands=["","Volkswagen","Audi","SEAT","Skoda","BMW","Ford","Peugeot","Alfa Romeo","Abarth","Mercedes-Benz","Renault","Citroen","Opel","Fiat","Volvo"];
-const presets=["AXR","ASZ","BLT","ARL","BPX","CAYC","BKD","MED9.1","EDC17C46","N47"];
+const brands=["","Volkswagen","Audi","SEAT","Skoda","BMW","Ford","Peugeot","Alfa Romeo","Abarth","Mercedes-Benz","Renault","Citroen","Opel","Fiat","Volvo","Hyundai","Nissan"];
+const presets=["AXR","ASZ","BLT","ARL","BPX","PD130","CAYC","BKD","MED9.1","EDC17C46","N47"];
 function Status({children}:{children:React.ReactNode}){return <small style={{border:"1px solid #37516a",borderRadius:6,padding:"3px 8px",color:"#bcd5e9"}}>{children}</small>;}
 export default function VehicleSearchClient(){
  const [q,setQ]=useState(""),[make,setMake]=useState(""),[method,setMethod]=useState("all");
