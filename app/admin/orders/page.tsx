@@ -34,7 +34,7 @@ export default async function AdminOrdersPage() {
   const { data: orders, error } = await admin
     .from("orders")
     .select(
-      "id,user_id,service_code,service_name,amount_pence,deposit_pence,currency,status,payment_status,vehicle_make,vehicle_model,engine_code,software_id,customer_notes,admin_notes,created_at,checkout_session_id,order_files(id,kind,scan_status,delivery_status)"
+      "id,user_id,service_code,service_name,amount_pence,deposit_pence,currency,status,payment_status,vehicle_make,vehicle_model,engine_code,software_id,customer_notes,admin_notes,created_at,checkout_session_id,order_files(id,kind,scan_status,delivery_status,original_filename,size_bytes)"
     )
     .order("created_at", { ascending: false })
     .limit(200);
