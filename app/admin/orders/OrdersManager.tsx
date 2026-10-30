@@ -496,6 +496,12 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   )}
                 </div>
 
+                {!(selected.payment_status === "paid" && ["in_progress", "qa_review"].includes(selected.status)) && (
+                  <div className="border-t border-white/[0.08] pt-5">
+                    <h3 className="text-base font-bold text-white">Upload finished tuning file</h3>
+                    <p className="mt-2 text-xs text-amber-300">Available after payment is confirmed and the order is moved to In progress or QA review. This prevents unpaid files being prepared for delivery.</p>
+                  </div>
+                )}
                 {selected.payment_status === "paid" &&
                   ["in_progress", "qa_review"].includes(selected.status) && (
                   <div className="border-t border-white/[0.08] pt-5">
