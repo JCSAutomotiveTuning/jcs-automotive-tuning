@@ -7,7 +7,7 @@ type Vehicle = { make:string;model:string;engine_code:string|null;ecu_family:str
 export default function Tools(){
  const [family,setFamily]=useState(""),[matches,setMatches]=useState<Match[]>([]),[vehicles,setVehicles]=useState<Vehicle[]>([]);
  const [error,setError]=useState(""),[busy,setBusy]=useState(false),[searched,setSearched]=useState(false);
- const [verifiedOnly,setVerifiedOnly]=useState(false),[method,setMethod]=useState("all");
+ const [verifiedOnly,setVerifiedOnly]=useState(false),[method,setMethod]=useState("all"),[quota,setQuota]=useState<{remaining:number;daily_limit:number}|null>(null);
  async function search(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");setSearched(false);try{
  const vehicleResponse=await fetch("/api/vehicle-ecu-search?"+new URLSearchParams({q:family}),{cache:"no-store"});
  const vehicleData=await vehicleResponse.json();
@@ -20,13 +20,16 @@ export default function Tools(){
  }));
  setMatches([...(vehicleData.familyProtocolReferences||[]),...sourced]);
  setVehicles(vehicleData.candidateVehicles||[]);
+ setQuota(vehicleData.quota||null);
  setSearched(true);
  }catch(e){setError(e instanceof Error?e.message:"Lookup failed");}finally{setBusy(false);}}
  return <main className="wrap"><nav className="nav"><Link className="brand" href="/dashboard">JCS <span>PORTAL</span></Link><Link className="btn secondary" href="/dashboard">Dashboard</Link></nav>
  <section className="hero"><div className="eyebrow">Tuning tools</div><h1>Tool <em>compatibility.</em></h1><p>Search by ECU family. Confirm exact hardware/software and current official tool protocol support before attempting a read or write.</p></section>
  <section className="card" style={{marginBottom:20}}><h2>Find ECU by vehicle</h2><p>Search by make, model, engine code or ECU family, with documented tool connections and sources.</p><Link className="btn" href="/dashboard/vehicle-ecu-search">Open Vehicle & ECU Finder</Link></section>
  <section className="card"><form onSubmit={search}><div className="field"><label htmlFor="family">ECU family</label><input id="family" required value={family} onChange={e=>setFamily(e.target.value)} placeholder="EDC16U31, MED9.1, EDC17"/></div><button className="btn" disabled={busy}>{busy?"Searching…":"Search compatibility"}</button></form>
+ <p>Customers share 5 ECU, tool and vehicle searches per day. Resets at midnight UK time.</p>
  {error&&<p role="alert">{error}</p>}
+ {quota&&<p role="status"><strong>{quota.remaining} of {quota.daily_limit} daily searches remaining.</strong></p>}
  {searched&&<><div className="field" style={{display:"flex",alignItems:"end",gap:14,flexWrap:"wrap",margin:"20px 0"}}>
   <label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" checked={verifiedOnly} onChange={e=>setVerifiedOnly(e.target.checked)}/> Verified only</label>
   <label>Connection method <select style={{display:"block",minWidth:150}} value={method} onChange={e=>setMethod(e.target.value)}><option value="all">All methods</option><option value="obd">OBD</option><option value="bench">Bench</option><option value="boot">Boot</option></select></label>
