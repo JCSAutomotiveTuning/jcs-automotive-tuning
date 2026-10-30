@@ -130,6 +130,20 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
     });
   }, [orders, search, filter, paymentFilter, sort]);
 
+  function exportFilteredOrders() {
+    // Export the rows already visible to this authenticated administrator only.
+    const safe=(value:unknown)=>{
+      let s=String(value??"").replace(/[\r\n]+/g," ");
+      if(/^[=+@\-\t]/.test(s))s="'"+s; // Avoid spreadsheet formula execution.
+      return '"'+s.replace(/"/g,'""')+'"';
+    };
+    const fields=["Order ID","Created","Customer","Service","Vehicle","Engine","ECU software","Status","Payment","Price GBP"];
+    const rows=filtered.map(o=>[o.id,o.created_at,o.customer_email,o.service_name,`${o.vehicle_make} ${o.vehicle_model}`,o.engine_code,o.software_id,o.status,o.payment_status,(o.amount_pence/100).toFixed(2)]);
+    const csv=[fields,...rows].map(row=>row.map(safe).join(",")).join("\r\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const link=document.createElement("a");link.href=url;link.download="jcs-orders-filtered.csv";link.click();URL.revokeObjectURL(url);
+  }
+
   function choose(order: Order) {
     setSelectedId(order.id);
     setFinishedFile(null);
@@ -293,6 +307,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
 
   return (
     <AdminArea active="orders" title="Order management" description="Your tuning workshop queue. Review jobs, manage custom quotes and keep customers' ECU and TCU orders progressing.">
+      <div className="mb-4 flex justify-end"><button type="button" onClick={exportFilteredOrders} className={secondaryButton} disabled={filtered.length===0}>Export filtered orders (CSV)</button></div>
       <section className="relative mb-6 overflow-hidden rounded-3xl border border-sky-400/15 bg-gradient-to-br from-[#172439] via-[#111c2b] to-[#0e1520] px-5 py-6 sm:px-7 sm:py-8">
         <div aria-hidden="true" className="pointer-events-none absolute -right-14 -top-24 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
         <div className="relative flex flex-wrap items-center justify-between gap-5">
