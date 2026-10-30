@@ -139,7 +139,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
     };
     const fields=["Order ID","Created","Customer","Service","Vehicle","Engine","ECU software","Status","Payment","Price GBP"];
     const rows=filtered.map(o=>[o.id,o.created_at,o.customer_email,o.service_name,`${o.vehicle_make} ${o.vehicle_model}`,o.engine_code,o.software_id,o.status,o.payment_status,(o.amount_pence/100).toFixed(2)]);
-    const csv=[fields,...rows].map(row=>row.map(safe).join(",")).join("\\r\\n");
+    const csv=[fields,...rows].map(row=>row.map(safe).join(",")).join("\r\n");
     const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
     const link=document.createElement("a");link.href=url;link.download="jcs-orders-filtered.csv";link.click();URL.revokeObjectURL(url);
   }
