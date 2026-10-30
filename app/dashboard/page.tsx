@@ -149,6 +149,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <Link href="/dashboard/vehicle-ecu-search">Vehicle &amp; ECU Finder</Link>
         <Link href="/dashboard/dealer">Dealer Application</Link>
         <Link href="/dashboard/vehicle-lookup">ECU Database</Link>
+        <Link href="/dashboard/notification-preferences">Notifications</Link>
         <Link href="/dashboard/support">Support Centre</Link>
       </nav>
 

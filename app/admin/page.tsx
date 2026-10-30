@@ -1,3 +1,4 @@
+import DealerApplicationsReview from "./DealerApplicationsReview";
 import Image from "next/image";
 import { PriceVisibilityToggle, MaskedAmount } from "@/components/PriceVisibility";
 import PriceVisibilityStyles from "@/components/PriceVisibilityStyles";
@@ -565,6 +566,7 @@ export default async function AdminDashboard() {
               </section>
             </div>
 
+            <DealerApplicationsReview />
             <footer className="mt-10 flex flex-col justify-between gap-3 border-t border-white/[0.08] py-6 text-xs text-slate-600 sm:flex-row sm:items-center">
               <p>© {new Date().getFullYear()} JCS Automotive Tuning</p>
               <p>Administrator workspace <span className="px-2 text-slate-700">/</span> Built for the workshop</p>
