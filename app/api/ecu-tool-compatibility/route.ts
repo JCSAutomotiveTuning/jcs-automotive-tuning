@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { toolDirectoryForFamily } from "@/lib/ecu-tool-directory";
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -20,9 +21,13 @@ export async function GET(req: NextRequest) {
       .select("make,model,engine_code,ecu_family,ecu_manufacturer,verified")
       .ilike("ecu_family", `%${safe}%`).limit(20)
   ]);
-  if (tools.error || vehicles.error) return NextResponse.json({ error: "Lookup unavailable" }, { status: 500 });
+  if (tools.error) console.error("Tool compatibility database lookup:", tools.error.message);
+  if (vehicles.error) console.error("ECU catalogue lookup:", vehicles.error.message);
+  const reference = toolDirectoryForFamily(safe);
   return NextResponse.json({
     matches: tools.data || [],
+    directory: reference.entries,
+    familyRecognised: reference.familyRecognised,
     vehicleReferences: vehicles.data || [],
     note: "Vehicle/ECU family matches are not proof of tool compatibility. Confirm ECU HW/SW and tool protocol against official support lists."
   });
