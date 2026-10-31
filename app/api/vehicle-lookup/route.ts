@@ -1,3 +1,4 @@
+import {chargeSearch} from "@/lib/customer-search-quota";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,7 +29,10 @@ export async function POST(req: Request) {
     if (response.status === 404) return NextResponse.json({ error: "Registration not found." }, { status: 404 });
     if (!response.ok) return NextResponse.json({ error: "Vehicle data provider is unavailable. Please try again." }, { status: 502 });
     const vehicle = await response.json();
+    const {blocked,quota}=await chargeSearch();
+    if(blocked)return blocked;
     return NextResponse.json({
+      quota,
       vehicle: {
         registrationNumber: vehicle.registrationNumber,
         make: vehicle.make,
@@ -44,7 +48,7 @@ export async function POST(req: Request) {
         egr: "Unconfirmed", dpf: "Unconfirmed", adblue: "Unconfirmed",
         note: "DVLA registration data cannot verify the ECU, emissions equipment or tuning gains. Confirm using ECU identification and a matched tuning database.",
       },
-    });
+    },{headers:{"Cache-Control":"private, no-store"}});
   } catch {
     return NextResponse.json({ error: "Vehicle lookup timed out. Please try again." }, { status: 504 });
   }

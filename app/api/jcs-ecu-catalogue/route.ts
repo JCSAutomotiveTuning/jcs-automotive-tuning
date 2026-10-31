@@ -1,3 +1,4 @@
+import {chargeSearch} from "@/lib/customer-search-quota";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,5 +22,7 @@ export async function GET(req: NextRequest) {
   if (engine) query = query.ilike("engine_code", safe(engine));
   const { data, error: queryError } = await query;
   if (queryError) return NextResponse.json({ error: "ECU catalogue temporarily unavailable." }, { status: 500 });
-  return NextResponse.json({ matches: data ?? [], note: "Provisional records are reference data, not confirmed ECU identification. Confirm the actual ECU hardware and software ID before supplying a tuning file." }, { headers: { "Cache-Control": "private, no-store" } });
+  const {blocked,quota}=await chargeSearch();
+  if(blocked)return blocked;
+  return NextResponse.json({ quota, matches: data ?? [], note: "Provisional records are reference data, not confirmed ECU identification. Confirm the actual ECU hardware and software ID before supplying a tuning file." }, { headers: { "Cache-Control": "private, no-store" } });
 }
