@@ -1,3 +1,4 @@
+import {chargeSearch} from "@/lib/customer-search-quota";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +26,8 @@ export async function GET(req: NextRequest) {
     const payload = await response.json() as { Results?: VpicResult[] };
     const result = payload.Results?.[0];
     if (!result) return NextResponse.json({ error: "No VIN information returned." }, { status: 404 });
+    const {blocked,quota}=await chargeSearch();
+    if(blocked)return blocked;
     const errorCode = clean(result.ErrorCode);
     const errors = errorCode ? errorCode.split(",").map(s=>s.trim()).filter(s=>s!=="0") : [];
     const vehicle = {
@@ -35,6 +38,7 @@ export async function GET(req: NextRequest) {
       enginePowerKW:clean(result.EngineKW), manufacturer:clean(result.Manufacturer),
     };
     return NextResponse.json({
+      quota,
       vehicle,
       warning: errors.length ? clean(result.ErrorText) || "VIN decoding was incomplete." : null,
       ecu: null,
