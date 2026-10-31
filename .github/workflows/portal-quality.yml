@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - name: Install from lockfile
         run: npm ci
+      - name: Production dependency advisory check (high and critical)
+        run: npm audit --omit=dev --audit-level=high
       - name: Static lint
         run: npm run lint
       - name: Test (mocked, no payments)
