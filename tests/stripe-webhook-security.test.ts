@@ -100,6 +100,28 @@ describe("Stripe webhook order payment security (local signatures, no network)",
     });
   });
 
+  it("credits only a correctly signed and matched £20 deposit wallet top-up", async () => {
+    vi.stubEnv("JCS_WALLET_DEPOSITS_ENABLED", "true");
+    const response = await send(session({
+      amount_total: 2000,
+      metadata: { type: "deposit_wallet_topup", user_id: userId, top_up_pence: "2000" },
+    }));
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith("credit_deposit_wallet_topup", {
+      p_user_id: userId, p_session_id: "cs_test_jcs_order_only", p_amount_pence: 2000,
+    });
+  });
+
+  it("blocks a signed wallet credit if the paid amount does not match metadata", async () => {
+    vi.stubEnv("JCS_WALLET_DEPOSITS_ENABLED", "true");
+    const response = await send(session({
+      amount_total: 1000,
+      metadata: { type: "deposit_wallet_topup", user_id: userId, top_up_pence: "2000" },
+    }));
+    expect(response.status).toBe(409);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("accepts already confirmed retries idempotently", async () => {
     mocks.rpc.mockResolvedValue({ data: "already_confirmed", error: null });
     const response = await send(session());
