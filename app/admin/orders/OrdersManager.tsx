@@ -299,9 +299,9 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
       }
 
       setFinishedFile(null);
-      setUploadMessage(
-        "Finished file uploaded successfully. Status: pending review."
-      );
+      setUploadMessage("Finished file uploaded successfully. Status: pending review.");
+      // Refresh server-rendered order file associations so the new file is visible.
+      window.location.reload();
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -323,6 +323,9 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
 
   return (
     <AdminArea active="orders" title="Order management" description="Your tuning workshop queue. Review jobs, manage custom quotes and keep customers' ECU and TCU orders progressing.">
+      {orders.some(order => order.status === "paid" && order.payment_status !== "paid") && <section role="alert" className="mb-4 rounded-xl border border-amber-400/50 bg-amber-400/10 p-4 text-sm text-amber-100">
+        A legacy order is marked as paid in its workflow, but payment has not been confirmed in its payment status. Review the transaction history and Stripe before changing financial records. No automatic credit or charge has been applied.
+      </section>}
       {selected?.status==="awaiting_payment"&&selected.payment_status==="unpaid"&&<section className="mb-4 rounded-xl border border-sky-500/30 bg-sky-500/[0.06] p-4">
        <h3 className="text-sm font-bold text-white">Manual bank transfer reconciliation</h3>
        <p className="my-2 text-xs text-slate-300">Only confirm after matching the order, exact outstanding amount and reference against cleared funds in your business bank account. This does not bypass completed-file scan and QA approval.</p>
@@ -411,7 +414,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   <span className="text-right"><span className="block text-base font-black tabular-nums text-white">{money(order.amount_pence)}</span>
                     <span className="mt-1 block text-[11px] text-slate-500">{new Date(order.created_at).toLocaleDateString("en-GB")}</span></span>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2"><StatusPill value={order.status} /><StatusPill value={order.payment_status} dot={false} /></div>
+                <div className="mt-3 flex flex-wrap items-center gap-2"><StatusPill value={order.status} /><StatusPill value={order.payment_status} dot={false} />{(order.order_files?.filter(file => file.kind === "customer_original").length ?? 0) > 0 && <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-1 text-[11px] font-bold text-sky-200">{order.order_files?.filter(file => file.kind === "customer_original").length} file(s)</span>}</div>
                 <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/[0.07] pt-3">
                   <span className="min-w-0 truncate text-xs text-slate-400">{order.customer_email || "Unknown customer"}</span>
                   <span className="shrink-0 text-xs font-bold text-sky-300">View job →</span>
@@ -435,6 +438,9 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
               </div>
 
               <div className="space-y-6 p-5 sm:p-6">
+                {selected.status === "paid" && selected.payment_status !== "paid" && <p role="alert" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">
+                  Payment reconciliation required. This order&apos;s workflow says paid but its payment ledger says unpaid. Do not release finished files until verified.
+                </p>}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
                   <Field title="Customer">{selected.customer_email}</Field>
                   <Field title="Order value">{money(selected.amount_pence)}</Field>
@@ -473,7 +479,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
 
                 <div className="border-t border-white/[0.08] pt-5">
                   <h3 className="text-base font-extrabold text-white">Customer uploaded files</h3>
-                  <p className="mt-1 text-xs text-slate-400">Original ECU/TCU files and datalogs attached to this order. Only antivirus-cleared files can be downloaded.</p>
+                  <p className="mt-1 text-xs text-slate-400">Original ECU/TCU files and datalogs attached to this order. {(selected.order_files?.filter(file => file.kind === "customer_original") ?? []).length} customer upload(s) found. Only antivirus-cleared files can be downloaded.</p>
                   {(selected.order_files?.filter(file => file.kind === "customer_original") ?? []).length === 0 ? (
                     <p className="mt-3 text-sm text-amber-300">No customer original file is attached to this order. Ask the customer to finish their upload before requesting payment.</p>
                   ) : (

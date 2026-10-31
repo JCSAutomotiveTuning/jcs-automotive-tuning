@@ -13,6 +13,7 @@ type Transaction = {
   created_at: string;
   order_id: string | null;
   customer_email: string;
+  ledger?: "legacy_wallet" | "deposit_wallet";
 };
 
 type StripeActivity = {
@@ -63,7 +64,7 @@ export default function TransactionsManager() {
   const filtered = useMemo(() => transactions.filter((t) => {
     if (type !== "all" && t.transaction_type !== type) return false;
     const needle = query.trim().toLowerCase();
-    return !needle || [t.customer_email, t.description ?? "", t.transaction_type, t.order_id ?? "", t.stripe_session_id ?? ""].some((value) => value.toLowerCase().includes(needle));
+    return !needle || [t.customer_email, t.description ?? "", t.transaction_type, t.ledger ?? "", t.order_id ?? "", t.stripe_session_id ?? ""].some((value) => value.toLowerCase().includes(needle));
   }), [transactions, type, query]);
 
   return (
@@ -90,7 +91,7 @@ export default function TransactionsManager() {
       </Panel>
       <Panel>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-          <div><h2 className="text-lg font-bold">Wallet transaction history</h2><p className="mt-1 text-xs text-slate-400">Most recent 500 entries; values in GBP</p></div>
+          <div><h2 className="text-lg font-bold">Wallet transaction history</h2><p className="mt-1 text-xs text-slate-400">Legacy wallet and £20 deposit wallet are separate ledgers; most recent 500 entries from each. Values in GBP.</p></div>
           <button onClick={() => void reload()} disabled={loading} className="rounded-xl bg-sky-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">Refresh</button>
         </div>
         <div className="mb-5 flex flex-col gap-3 sm:flex-row">
@@ -102,9 +103,9 @@ export default function TransactionsManager() {
           <>
             <p className="mb-3 text-xs text-slate-400">Showing {filtered.length} of {transactions.length} transactions</p>
             <div className="overflow-x-auto"><table className="w-full min-w-[950px] text-left text-sm">
-              <thead className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-500"><tr><th className="py-3 pr-4">When</th><th className="py-3 pr-4">Customer</th><th className="py-3 pr-4">Type</th><th className="py-3 pr-4">Description</th><th className="py-3 pr-4">Reference</th><th className="py-3 text-right">Amount</th></tr></thead>
+              <thead className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-500"><tr><th className="py-3 pr-4">When</th><th className="py-3 pr-4">Customer</th><th className="py-3 pr-4">Ledger</th><th className="py-3 pr-4">Type</th><th className="py-3 pr-4">Description</th><th className="py-3 pr-4">Reference</th><th className="py-3 text-right">Amount</th></tr></thead>
               <tbody className="divide-y divide-white/[0.06]">{filtered.map((item) => <tr key={item.id} className="align-top text-slate-300">
-                <td className="py-4 pr-4 whitespace-nowrap">{dateTime(item.created_at)}</td><td className="py-4 pr-4 break-all">{item.customer_email}</td><td className="py-4 pr-4">{item.transaction_type.replaceAll("_", " ")}</td><td className="py-4 pr-4">{item.description || "—"}</td>
+                <td className="py-4 pr-4 whitespace-nowrap">{dateTime(item.created_at)}</td><td className="py-4 pr-4 break-all">{item.customer_email}</td><td className="py-4 pr-4">{item.ledger === "deposit_wallet" ? "Deposit wallet" : "Legacy wallet"}</td><td className="py-4 pr-4">{item.transaction_type.replaceAll("_", " ")}</td><td className="py-4 pr-4">{item.description || "—"}</td>
                 <td className="py-4 pr-4 text-xs"><span className="block max-w-[240px] break-all">{item.order_id ? `Order: ${item.order_id}` : "—"}</span>{item.stripe_session_id && <span className="mt-1 block max-w-[240px] break-all text-slate-500">Stripe: {item.stripe_session_id}</span>}</td>
                 <td className={`py-4 text-right font-bold tabular-nums ${item.amount_pence >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{item.amount_pence > 0 ? "+" : ""}{money(item.amount_pence)}</td>
               </tr>)}</tbody></table>{filtered.length === 0 && <p className="py-10 text-center text-sm text-slate-400">No matching transactions.</p>}</div>

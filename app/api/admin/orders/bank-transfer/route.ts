@@ -15,6 +15,11 @@ export async function POST(req:Request){
  const {data:pending,error:lookupError}=await admin.from("order_bank_transfers").select("order_id,reference,amount_pence,state").eq("order_id",input.data.orderId).maybeSingle();
  if(lookupError||!pending)return NextResponse.json({error:"No bank transfer request for this order."},{status:404});
  if(pending.state!=="awaiting_transfer")return NextResponse.json({error:"This transfer has already been reviewed."},{status:409});
+ const {data:order,error:orderError}=await admin.from("orders").select("checkout_attempt_id,checkout_session_id,payment_status")
+   .eq("id",input.data.orderId).maybeSingle();
+ if(orderError||!order)return NextResponse.json({error:"Could not verify competing payment methods."},{status:503});
+ if(order.checkout_attempt_id||order.checkout_session_id)return NextResponse.json({error:"A card checkout exists. Verify it has expired and reconcile it before confirming bank payment."},{status:409});
+ if(order.payment_status!=="unpaid")return NextResponse.json({error:"This order is not awaiting bank payment."},{status:409});
  const {data:result,error}=await admin.rpc("confirm_manual_bank_transfer",{p_order_id:input.data.orderId,p_admin_id:user.id,p_bank_reference:input.data.bankReference});
  if(error||result!=="confirmed"){console.error("Bank transfer confirmation failed:",error?.code,error?.message);return NextResponse.json({error:"Could not confirm this transfer. Review amount, payment state and bank receipt."},{status:409});}
  return NextResponse.json({ok:true,orderId:input.data.orderId,paymentStatus:"paid"});
