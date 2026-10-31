@@ -18,7 +18,7 @@ export async function GET() {
 
   const key = process.env.STRIPE_SECRET_KEY ?? "";
   const production = process.env.VERCEL_ENV === "production";
-  const keyForEnvironment = production ? key.startsWith("sk_live_") : key.startsWith("sk_test_");
+  const keyForEnvironment = production ? /^(sk|rk)_live_/.test(key) : /^(sk|rk)_test_/.test(key);
   const check: {
     stripeLiveKey: boolean;
     webhookSigningSecretPresent: boolean;
@@ -29,7 +29,7 @@ export async function GET() {
     verificationPending: boolean | null;
     stripeCheckError: boolean;
   } = {
-    stripeLiveKey: production && key.startsWith("sk_live_"),
+    stripeLiveKey: production && /^(sk|rk)_live_/.test(key),
     webhookSigningSecretPresent: Boolean(process.env.STRIPE_WEBHOOK_SECRET?.startsWith("whsec_")),
     stripeApiReachable: false,
     expectedAccountMatches: false,
@@ -40,7 +40,7 @@ export async function GET() {
   };
   if (keyForEnvironment) {
     try {
-      // Query the merchant account tied to the active secret key, not a Connect account.
+      // Restricted keys may not have account.read. A failed account lookup is not proof that payment processing is disabled.
       const reply = await fetch("https://api.stripe.com/v1/account", {
         headers: { Authorization: `Bearer ${key}` },
         cache: "no-store",
