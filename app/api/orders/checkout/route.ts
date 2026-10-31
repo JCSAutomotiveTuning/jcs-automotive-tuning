@@ -53,6 +53,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "This order does not have a valid payment amount." }, { status: 400 });
     }
 
+    // Never create a card checkout while a bank transfer is being reconciled.
+    const { data: bankTransfer, error: bankError } = await admin.from("order_bank_transfers")
+      .select("state").eq("order_id", order.id).maybeSingle();
+    if (bankError) return NextResponse.json({ error: "Could not verify alternative payment methods." }, { status: 503 });
+    if (bankTransfer) return NextResponse.json({
+      error: "A bank transfer has already been requested for this order. Contact JCS before attempting card payment.",
+    }, { status: 409 });
+
     const remainingPence = order.amount_pence - (order.deposit_pence ?? 0);
     if (!Number.isSafeInteger(remainingPence) || remainingPence <= 0) {
       return NextResponse.json({ error: "This order has no remaining Stripe balance. Request manual account reconciliation." }, { status: 409 });
