@@ -57,6 +57,8 @@ Never put service keys in source control or client-facing environment variables.
 
 Customer-facing: `/dashboard/vehicle-ecu-search` for make, model, generation, engine code, ECU family, tool name and existing ECU part numbers. Every sourced result shows the manufacturer URL, snapshot year, and read/write operation status individually.
 
+Customer allowance: five combined ECU / vehicle checks per UK calendar day (reset at midnight Europe/London). The authenticated server-side `consume_customer_search()` RPC handles concurrent requests atomically and exempts admin users. It is shared by `/api/vehicle-ecu-search`, `/api/ecu-tool-compatibility`, `/api/jcs-ecu-catalogue`, `/api/vin-decode`, `/api/vehicle-lookup`, and the final `vehicle` step of `/api/ecu-catalogue`. Browsing make/model directory steps does not count. Successful provider lookups consume a check; requests with invalid input or failed upstream lookups do not. Result page changes in the main finder count as another check.
+
 - Do not expand a single listed model year into a claimed production range.
 - Show **multiple alternative ECU families** for one engine if source lists several. Example: VW Golf VII CLHB lists Bosch EDC17C64 and Continental PCR2.1 variants.
 - Engine code only suggests ECU type. The technician must read the ECU ID/label (hardware number, software number) and use current vendor protocols before writing.
