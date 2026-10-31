@@ -38,8 +38,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (order.payment_status !== "paid" || order.status !== "completed") {
     return NextResponse.json({ error: "Finished files are released only after confirmed payment and completion." }, { status: 409, headers: noStore });
   }
+  const safeDownloadName = String(file.original_filename ?? "tuned-file.bin")
+    .replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 180);
   const { data, error } = await admin.storage.from("tuning-files")
-    .createSignedUrl(file.storage_path, 60, { download: file.original_filename });
+    .createSignedUrl(file.storage_path, 60, { download: safeDownloadName });
   if (error || !data?.signedUrl) {
     console.error("Customer finished file signing failed:", error?.message);
     return NextResponse.json({ error: "Could not prepare a secure download." }, { status: 503, headers: noStore });
