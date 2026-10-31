@@ -225,7 +225,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   o.payment_status === "unpaid" &&
                   o.currency === "GBP" &&
                   Number.isSafeInteger(o.amount_pence) &&
-                  (o.order_files?.length ?? 0) === 0;
+                  true;
 
                 return (
                   <article className="order-entry order-card" key={o.id}>
