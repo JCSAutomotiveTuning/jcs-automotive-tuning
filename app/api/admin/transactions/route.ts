@@ -74,8 +74,8 @@ export async function GET() {
             stripe_reference: payment.id,
             status: payment.status,
           })),
-        ...refunds.data.filter(refund => refund.livemode === expectedMode)
-          .map(refund => ({
+        // Refund responses are scoped to the authenticated Stripe key's mode.
+        ...refunds.data.map(refund => ({
             id: refund.id,
             created_at: new Date(refund.created * 1000).toISOString(),
             amount_pence: -refund.amount,
