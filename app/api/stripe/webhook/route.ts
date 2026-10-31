@@ -162,7 +162,7 @@ export async function POST(req: Request) {
   if (session.metadata?.type === "deposit_wallet_topup") {
     const userId = session.metadata.user_id;
     const amount = Number(session.metadata.top_up_pence);
-    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const checks = {
       walletEnabled: process.env.JCS_WALLET_DEPOSITS_ENABLED === "true",
       validCustomer: Boolean(userId && uuid.test(userId)),
