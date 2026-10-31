@@ -200,7 +200,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
       if (updated.status) setDraftStatus(updated.status);
       if (updated.admin_notes !== undefined) setDraftNotes(updated.admin_notes ?? "");
       if (updated.amount_pence !== undefined) setQuotePounds((updated.amount_pence / 100).toFixed(2));
-      setSuccess(kind === "quote" ? "Customer quote saved." : kind === "payment" ? "Order moved to awaiting payment." : "Order changes saved.");
+      setSuccess(kind === "quote" ? "Customer quote saved." : kind === "payment" ? (updated.status === "paid" ? "Deposit fully settled. Any unused credit was returned to the customer wallet." : "Order moved to awaiting payment.") : "Order changes saved.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save the order.");
     } finally {
@@ -587,9 +587,9 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                 {allowRequestPayment && <div className="border-t border-white/[0.08] pt-5">
                   <div className="rounded-xl border border-amber-400/15 bg-amber-400/[0.055] p-4">
                     <h3 className="text-sm font-bold text-white">Ready to request payment?</h3>
-                    <p className="mt-1.5 text-xs leading-5 text-slate-400">The customer can pay {money(selected.amount_pence)} after the order is moved to awaiting payment.</p>
+                    <p className="mt-1.5 text-xs leading-5 text-slate-400">{(selected.deposit_pence ?? 0) >= selected.amount_pence ? "The £20 wallet deposit covers the whole price. Request payment to settle it without a new Stripe charge and return unused deposit credit." : <>The customer can pay {money(selected.amount_pence - (selected.deposit_pence ?? 0))} after the order is moved to awaiting payment.</>}</p>
                     <button type="button" className={`${primaryButton} mt-4 w-full`} disabled={busy !== null} onClick={() => {
-                      if (window.confirm(`Request payment of ${money(selected.amount_pence)} for ${selected.customer_email}?`)) void patch({ action: "request_payment" }, "payment");
+                      if (window.confirm(`Settle or request the outstanding ${money(Math.max(0, selected.amount_pence - (selected.deposit_pence ?? 0)))} for ${selected.customer_email}?`)) void patch({ action: "request_payment" }, "payment");
                     }}>{busy === "payment" ? "Requesting…" : "Request customer payment →"}</button>
                   </div>
                 </div>}
