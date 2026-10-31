@@ -414,7 +414,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   <span className="text-right"><span className="block text-base font-black tabular-nums text-white">{money(order.amount_pence)}</span>
                     <span className="mt-1 block text-[11px] text-slate-500">{new Date(order.created_at).toLocaleDateString("en-GB")}</span></span>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2"><StatusPill value={order.status} /><StatusPill value={order.payment_status} dot={false} /></div>
+                <div className="mt-3 flex flex-wrap items-center gap-2"><StatusPill value={order.status} /><StatusPill value={order.payment_status} dot={false} />{(order.order_files?.filter(file => file.kind === "customer_original").length ?? 0) > 0 && <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-1 text-[11px] font-bold text-sky-200">{order.order_files?.filter(file => file.kind === "customer_original").length} file(s)</span>}</div>
                 <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/[0.07] pt-3">
                   <span className="min-w-0 truncate text-xs text-slate-400">{order.customer_email || "Unknown customer"}</span>
                   <span className="shrink-0 text-xs font-bold text-sky-300">View job →</span>
