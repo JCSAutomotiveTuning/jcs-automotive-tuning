@@ -22,16 +22,13 @@ async function handler(req:Request){
  const amount=Math.max(0,order.amount_pence-(order.deposit_pence||0));
  if(amount<=0)return NextResponse.json({error:"No outstanding bank transfer balance."},{status:409});
  const ref="JCS-"+order.id.replace(/-/g,"").slice(0,16).toUpperCase();
- const {data:existing,error:lookupError}=await admin.from("order_bank_transfers").select("amount_pence,reference,state").eq("order_id",order.id).maybeSingle();
- if(lookupError)return NextResponse.json({error:"Could not check transfer instructions."},{status:503});
- if(existing&&(existing.amount_pence!==amount||existing.state!=="awaiting_transfer"))return NextResponse.json({error:"Transfer request needs administrator review."},{status:409});
- if(!existing){
- const {error:insertError}=await admin.from("order_bank_transfers").insert({order_id:order.id,user_id:user.id,amount_pence:amount,reference:ref});
- if(insertError){
-  const check=await admin.from("order_bank_transfers").select("amount_pence,state").eq("order_id",order.id).maybeSingle();
-  if(check.data?.amount_pence!==amount||check.data?.state!=="awaiting_transfer")return NextResponse.json({error:"Unable to prepare bank transfer."},{status:503});
- }
- }
+ const {data:reservation,error:reservationError}=await admin.rpc("reserve_order_bank_transfer",{
+   p_order_id:order.id,p_user_id:user.id,p_amount_pence:amount,p_reference:ref
+ });
+ if(reservationError){console.error("Bank transfer reservation failed:",reservationError.code,reservationError.message);
+  return NextResponse.json({error:"Could not safely reserve bank payment. Contact JCS."},{status:503});}
+ if(!["created","existing"].includes(reservation)){
+  return NextResponse.json({error:reservation==="card_checkout_exists"?"Card checkout already reserved. Contact JCS before bank transfer.":"Bank transfer needs reconciliation before payment."},{status:409});}
  return NextResponse.json({accountName:holder,sortCode:sort.slice(0,2)+"-"+sort.slice(2,4)+"-"+sort.slice(4),accountNumber:number,reference:ref,amountPence:amount,currency:"GBP",notice:"Pay by bank transfer using the exact reference. Your order remains unpaid and files locked until JCS manually verifies cleared funds in the business bank account."},{headers:{"Cache-Control":"private, no-store"}});
 }
 export async function POST(req:Request){return handler(req);}

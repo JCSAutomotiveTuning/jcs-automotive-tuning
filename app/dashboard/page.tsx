@@ -9,6 +9,7 @@ import NewOrder from "./new-order";
 import DepositWalletPanel from "./DepositWalletPanel";
 import ResumeUpload from "./ResumeUpload";
 import OrderPaymentButton from "./OrderPaymentButton";
+import FinishedFileDownload from "./FinishedFileDownload";
 import LiveClock from "@/components/LiveClock";
 
 // @next-codemod-ignore Cache Components adoption: this segment temporarily allows blocking.
@@ -103,7 +104,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     supabase
       .from("orders")
       .select(
-        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,admin_notes,order_files(id,scan_status)"
+        "id,service_code,service_name,status,payment_status,amount_pence,currency,created_at,vehicle_make,vehicle_model,engine_code,admin_notes,order_files(id,kind,scan_status,delivery_status,original_filename)"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -296,6 +297,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                       </ol>
                     )}
 
+                    {o.status === "completed" && o.payment_status === "paid" && o.order_files?.filter(f => f.kind === "completed_output" && f.scan_status === "clean" && f.delivery_status === "approved").map(f => (
+                      <FinishedFileDownload key={f.id} fileId={f.id} filename={f.original_filename} />
+                    ))}
+                    {o.status === "completed" && o.payment_status === "paid" &&
+                      !o.order_files?.some(f => f.kind === "completed_output" && f.scan_status === "clean" && f.delivery_status === "approved") && (
+                      <p className="order-detail" role="status">Your completed file is awaiting final release. Please contact JCS Support if it does not appear.</p>
+                    )}
                     {canPay && <OrderPaymentButton orderId={o.id} bankEnabled={!!process.env.JCS_BANK_ACCOUNT_NAME && /^\d{6}$/.test((process.env.JCS_BANK_SORT_CODE||"").replace(/\D/g,"")) && /^\d{8}$/.test((process.env.JCS_BANK_ACCOUNT_NUMBER||"").replace(/\\D/g,""))} />}
 
                      {canResumeUpload && (

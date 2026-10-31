@@ -21,13 +21,13 @@ export default function DepositWalletPanel({ balancePence, events=[] }: { balanc
  return <section className="card">
    <h2>JCS submission wallet</h2>
    <p>Available verified credit: <strong>£{(balancePence/100).toFixed(2)}</strong></p>
-   <p>A £20 deposit is required for each new order. It is deducted once and credited against your final tuning invoice — not charged again. Retries do not use more credit.</p>
+   <p>£20 verified credit is required for every new job. £20 is reserved and credited to the final price. If the final price is below £20, unused credit returns to this wallet after JCS confirms the job. Retries do not reserve more credit.</p>
    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
     {[2000,4000,10000].map(amount=><button type="button" className="btn secondary" key={amount} disabled={busy} onClick={()=>void topUp(amount)}>Add £{amount/100}</button>)}
    </div>
    <details style={{marginTop:14}}><summary style={{cursor:"pointer",fontWeight:700}}>Recent wallet activity ({events.length})</summary>
     {events.length===0?<p>No deposit wallet transactions to display.</p>:<div style={{display:"grid",gap:8,marginTop:12}}>{events.map(e=><div key={e.id} style={{display:"flex",justifyContent:"space-between",gap:12,borderBottom:"1px solid #293341",paddingBottom:8}}>
-      <div><strong>{e.transaction_type==="top_up"?"Wallet top-up":e.transaction_type==="order_deposit"?"Order deposit":e.transaction_type==="deposit_release"?"Deposit returned":"Wallet adjustment"}</strong><div style={{fontSize:12,opacity:.75}}>{new Date(e.created_at).toLocaleString("en-GB")}{e.description?" · "+e.description:""}</div></div>
+      <div><strong>{e.transaction_type==="top_up"?"Wallet top-up":e.transaction_type==="order_deposit"?"Order deposit":e.transaction_type==="deposit_release"?"Deposit returned":e.transaction_type==="deposit_remainder"?"Unused deposit returned":"Wallet adjustment"}</strong><div style={{fontSize:12,opacity:.75}}>{new Date(e.created_at).toLocaleString("en-GB")}{e.description?" · "+e.description:""}</div></div>
       <strong style={{whiteSpace:"nowrap"}}>{e.amount_pence>=0?"+":"−"}£{(Math.abs(e.amount_pence)/100).toFixed(2)}</strong>
     </div>)}</div>}
    </details>

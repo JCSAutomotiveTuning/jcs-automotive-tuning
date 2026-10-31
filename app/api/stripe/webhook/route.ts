@@ -162,11 +162,19 @@ export async function POST(req: Request) {
   if (session.metadata?.type === "deposit_wallet_topup") {
     const userId = session.metadata.user_id;
     const amount = Number(session.metadata.top_up_pence);
-    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (process.env.JCS_WALLET_DEPOSITS_ENABLED !== "true" ||
-      !userId || !uuid.test(userId) || session.client_reference_id !== userId ||
-      session.currency !== "gbp" || ![2000, 4000, 10000].includes(amount) ||
-      session.amount_total !== amount || session.metadata.top_up_pence !== String(amount)) {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const checks = {
+      walletEnabled: process.env.JCS_WALLET_DEPOSITS_ENABLED === "true",
+      validCustomer: Boolean(userId && uuid.test(userId)),
+      customerMatches: session.client_reference_id === userId,
+      gbp: session.currency === "gbp",
+      allowedAmount: [2000, 4000, 10000].includes(amount),
+      amountMatches: session.amount_total === amount,
+      amountMetadataMatches: session.metadata.top_up_pence === String(amount),
+    };
+    if (!Object.values(checks).every(Boolean)) {
+      console.error("Deposit wallet payment validation failed (field names only):",
+        Object.entries(checks).filter(([,pass]) => !pass).map(([key]) => key));
       return NextResponse.json({ error: "Deposit wallet payment needs reconciliation." }, { status: 409 });
     }
     const { error } = await admin.rpc("credit_deposit_wallet_topup", {
@@ -234,6 +242,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Order payment requires reconciliation." }, { status: 409 });
   }
   // Existing ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£20 wallet top-up flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â preserved.
+  // The historic 50p owner-only live test is not an order or wallet top-up.
+  // Confirm its full Stripe refund before acknowledging its pending webhook.
+  if (session.metadata?.type === "owner_live_payment_test" &&
+      session.metadata?.purpose === "stripe_only_no_portal_order" &&
+      session.amount_total === 50 && session.currency === "gbp" &&
+      session.payment_intent) {
+    const intentId = typeof session.payment_intent === "string"
+      ? session.payment_intent : session.payment_intent.id;
+    try {
+      const refunds = await stripe.refunds.list({ payment_intent: intentId, limit: 100 });
+      const succeededPence = refunds.data.filter(r => r.status === "succeeded")
+        .reduce((sum, r) => sum + r.amount, 0);
+      if (!refunds.has_more && succeededPence === 50) {
+        console.info("Fully refunded standalone owner test acknowledged, no customer credit:", session.id);
+        return NextResponse.json({ received: true });
+      }
+    } catch (error) {
+      console.error("Owner test refund verification failed:",
+        error instanceof Error ? error.name : "unknown");
+    }
+    return NextResponse.json({ error: "Owner checkout requires refund reconciliation." }, { status: 409 });
+  }
   if (
     session.amount_total !== 2000 ||
     session.currency !== "gbp" ||

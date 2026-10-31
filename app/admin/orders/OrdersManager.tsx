@@ -200,7 +200,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
       if (updated.status) setDraftStatus(updated.status);
       if (updated.admin_notes !== undefined) setDraftNotes(updated.admin_notes ?? "");
       if (updated.amount_pence !== undefined) setQuotePounds((updated.amount_pence / 100).toFixed(2));
-      setSuccess(kind === "quote" ? "Customer quote saved." : kind === "payment" ? "Order moved to awaiting payment." : "Order changes saved.");
+      setSuccess(kind === "quote" ? "Customer quote saved." : kind === "payment" ? (updated.status === "paid" ? "Deposit fully settled. Any unused credit was returned to the customer wallet." : "Order moved to awaiting payment.") : "Order changes saved.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save the order.");
     } finally {
@@ -224,7 +224,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   }
 
   async function refundSelected() {
-    if (!selected || refunding || busy || selected.payment_status !== "paid" || !selected.checkout_session_id) return;
+    if (!selected || refunding || busy || selected.payment_status !== "paid" || !selected.checkout_session_id || (selected.deposit_pence ?? 0) > 0) return;
     const orderId = selected.id;
     if (!window.confirm(`Refund the full ${money(selected.amount_pence)} to the original payment method for order ${orderId.slice(0, 8)}? This cannot be undone.`)) return;
     setRefunding(true);
@@ -587,9 +587,9 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                 {allowRequestPayment && <div className="border-t border-white/[0.08] pt-5">
                   <div className="rounded-xl border border-amber-400/15 bg-amber-400/[0.055] p-4">
                     <h3 className="text-sm font-bold text-white">Ready to request payment?</h3>
-                    <p className="mt-1.5 text-xs leading-5 text-slate-400">The customer can pay {money(selected.amount_pence)} after the order is moved to awaiting payment.</p>
+                    <p className="mt-1.5 text-xs leading-5 text-slate-400">{(selected.deposit_pence ?? 0) >= selected.amount_pence ? "The £20 wallet deposit covers the whole price. Request payment to settle it without a new Stripe charge and return unused deposit credit." : <>The customer can pay {money(selected.amount_pence - (selected.deposit_pence ?? 0))} after the order is moved to awaiting payment.</>}</p>
                     <button type="button" className={`${primaryButton} mt-4 w-full`} disabled={busy !== null} onClick={() => {
-                      if (window.confirm(`Request payment of ${money(selected.amount_pence)} for ${selected.customer_email}?`)) void patch({ action: "request_payment" }, "payment");
+                      if (window.confirm(`Settle or request the outstanding ${money(Math.max(0, selected.amount_pence - (selected.deposit_pence ?? 0)))} for ${selected.customer_email}?`)) void patch({ action: "request_payment" }, "payment");
                     }}>{busy === "payment" ? "Requesting…" : "Request customer payment →"}</button>
                   </div>
                 </div>}
@@ -603,7 +603,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   {refundHistoryError && <p className="mt-2 text-xs text-rose-300">{refundHistoryError}</p>}
                   {refundHistory && (
                     <div className="mt-3 space-y-2 text-xs text-slate-300">
-                      <p>{refundHistory.verifiedPayment ? `Remaining refundable: ${money(refundHistory.refundablePence)}` : "No verified Stripe order payment linked."}</p>
+                      <p>{refundHistory.verifiedPayment ? `Remaining Stripe refundable: ${money(refundHistory.refundablePence)}` : "No verified Stripe order payment linked."}</p>
                       {refundHistory.refunds.map((refund) => (
                         <div key={refund.id} className="rounded-lg border border-white/10 p-2">
                           {money(refund.amountPence)} · {refund.status} · {new Date(refund.created * 1000).toLocaleDateString("en-GB")}
@@ -615,6 +615,8 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   )}
                   {selected.payment_status === "refunded" ? (
                     <p className="mt-3 text-sm font-semibold text-emerald-300">This payment has been refunded.</p>
+                  ) : selected.payment_status === "paid" && selected.checkout_session_id && (selected.deposit_pence ?? 0) > 0 ? (
+                    <p className="mt-3 text-xs text-amber-300">This order includes a £20 wallet deposit. Check Stripe history, then reconcile the wallet deposit and Stripe remainder together before refunding.</p>
                   ) : selected.payment_status === "paid" && selected.checkout_session_id ? (
                     <button type="button" className="mt-3 w-full rounded-xl border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-sm font-bold text-rose-200 hover:bg-rose-400/20 disabled:opacity-50" disabled={refunding || busy !== null} onClick={() => void refundSelected()}>
                       {refunding ? "Processing refund..." : `Refund ${money(selected.amount_pence)} to customer`}

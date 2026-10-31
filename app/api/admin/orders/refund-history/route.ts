@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   }
   const admin = createAdminClient();
   const { data: order, error: orderError } = await admin.from("orders")
-    .select("id,user_id,amount_pence,currency,checkout_session_id")
+    .select("id,user_id,amount_pence,deposit_pence,currency,checkout_session_id")
     .eq("id", id).maybeSingle();
   if (orderError) return NextResponse.json({ error: "Order lookup failed." }, { status: 500 });
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
@@ -37,19 +37,21 @@ export async function GET(req: Request) {
   }
   try {
     const stripe = new Stripe(key);
+    const remainingPence = order.amount_pence - (order.deposit_pence ?? 0);
+    if (!Number.isSafeInteger(remainingPence) || remainingPence <= 0) return NextResponse.json({ refunds: [], refundablePence: 0, verifiedPayment: false });
     const session = await stripe.checkout.sessions.retrieve(order.checkout_session_id);
     if (session.mode !== "payment" || session.payment_status !== "paid" ||
         session.metadata?.type !== "order_payment" ||
         session.metadata.order_id !== order.id ||
         session.metadata.user_id !== order.user_id ||
         session.client_reference_id !== order.user_id ||
-        session.currency !== "gbp" || session.amount_total !== order.amount_pence ||
+        session.currency !== "gbp" || session.amount_total !== remainingPence ||
         !session.payment_intent) {
       return NextResponse.json({ refunds: [], refundablePence: 0, verifiedPayment: false });
     }
     const intentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent.id;
     const paymentIntent = await stripe.paymentIntents.retrieve(intentId);
-    if (paymentIntent.currency !== "gbp" || paymentIntent.amount_received !== order.amount_pence) {
+    if (paymentIntent.currency !== "gbp" || paymentIntent.amount_received !== remainingPence) {
       return NextResponse.json({ error: "Payment amount mismatch. Reconciliation required." }, { status: 409 });
     }
     const all = await stripe.refunds.list({ payment_intent: intentId, limit: 100 });
@@ -63,8 +65,10 @@ export async function GET(req: Request) {
       .reduce((total, r) => total + r.amountPence, 0);
     return NextResponse.json({
       verifiedPayment: true,
-      originalPence: order.amount_pence,
-      refundablePence: Math.max(0, order.amount_pence - reserved),
+      originalPence: remainingPence,
+      depositPence: order.deposit_pence ?? 0,
+      totalOrderPence: order.amount_pence,
+      refundablePence: Math.max(0, remainingPence - reserved),
       refunds,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
