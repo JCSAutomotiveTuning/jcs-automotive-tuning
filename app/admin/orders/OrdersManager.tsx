@@ -224,7 +224,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   }
 
   async function refundSelected() {
-    if (!selected || refunding || busy || selected.payment_status !== "paid" || !selected.checkout_session_id) return;
+    if (!selected || refunding || busy || selected.payment_status !== "paid" || !selected.checkout_session_id || (selected.deposit_pence ?? 0) > 0) return;
     const orderId = selected.id;
     if (!window.confirm(`Refund the full ${money(selected.amount_pence)} to the original payment method for order ${orderId.slice(0, 8)}? This cannot be undone.`)) return;
     setRefunding(true);
@@ -603,7 +603,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   {refundHistoryError && <p className="mt-2 text-xs text-rose-300">{refundHistoryError}</p>}
                   {refundHistory && (
                     <div className="mt-3 space-y-2 text-xs text-slate-300">
-                      <p>{refundHistory.verifiedPayment ? `Remaining refundable: ${money(refundHistory.refundablePence)}` : "No verified Stripe order payment linked."}</p>
+                      <p>{refundHistory.verifiedPayment ? `Remaining Stripe refundable: ${money(refundHistory.refundablePence)}` : "No verified Stripe order payment linked."}</p>
                       {refundHistory.refunds.map((refund) => (
                         <div key={refund.id} className="rounded-lg border border-white/10 p-2">
                           {money(refund.amountPence)} · {refund.status} · {new Date(refund.created * 1000).toLocaleDateString("en-GB")}
@@ -615,6 +615,8 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   )}
                   {selected.payment_status === "refunded" ? (
                     <p className="mt-3 text-sm font-semibold text-emerald-300">This payment has been refunded.</p>
+                  ) : selected.payment_status === "paid" && selected.checkout_session_id && (selected.deposit_pence ?? 0) > 0 ? (
+                    <p className="mt-3 text-xs text-amber-300">This order includes a £20 wallet deposit. Check Stripe history, then reconcile the wallet deposit and Stripe remainder together before refunding.</p>
                   ) : selected.payment_status === "paid" && selected.checkout_session_id ? (
                     <button type="button" className="mt-3 w-full rounded-xl border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-sm font-bold text-rose-200 hover:bg-rose-400/20 disabled:opacity-50" disabled={refunding || busy !== null} onClick={() => void refundSelected()}>
                       {refunding ? "Processing refund..." : `Refund ${money(selected.amount_pence)} to customer`}
