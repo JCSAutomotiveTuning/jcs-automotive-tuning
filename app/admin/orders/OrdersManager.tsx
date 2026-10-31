@@ -439,7 +439,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
 
               <div className="space-y-6 p-5 sm:p-6">
                 {selected.status === "paid" && selected.payment_status !== "paid" && <p role="alert" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">
-                  Payment reconciliation required. This order's workflow says paid but its payment ledger says unpaid. Do not release finished files until verified.
+                  Payment reconciliation required. This order&apos;s workflow says paid but its payment ledger says unpaid. Do not release finished files until verified.
                 </p>}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
                   <Field title="Customer">{selected.customer_email}</Field>
