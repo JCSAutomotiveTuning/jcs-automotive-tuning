@@ -23,10 +23,10 @@ export async function GET() {
   try {
     const [ordersResult, filesResult] = await Promise.all([
       admin.from("orders")
-        .select("id,status,payment_status,checkout_session_id,stripe_payment_session_id,checkout_attempt_id")
+        .select("id,service_code,status,payment_status,checkout_session_id,stripe_payment_session_id,checkout_attempt_id")
         .order("created_at", { ascending: false }).limit(1000),
       admin.from("order_files")
-        .select("id,scan_status,kind").limit(1000),
+        .select("id,order_id,scan_status,kind,delivery_status").limit(1000),
     ]);
     if (ordersResult.error || filesResult.error || !ordersResult.data || !filesResult.data) {
       console.error("Launch audit failed:", ordersResult.error?.message, filesResult.error?.message);
@@ -44,6 +44,12 @@ export async function GET() {
       !["awaiting_payment", "cancelled", "failed"].includes(o.status)
     );
     const awaitingScans = files.filter(f => f.kind === "customer_original" && f.scan_status !== "clean");
+    const requiresDeliverable = new Set(["ecu_stage1","dsg_tcu","custom_ecu","custom_tcu","ecu_tcu_package"]);
+    const completedWithoutApprovedOutput = orders.filter(o =>
+      o.status === "completed" && o.payment_status === "paid" && requiresDeliverable.has(o.service_code) &&
+      !files.some(f => f.order_id === o.id && f.kind === "completed_output" &&
+        f.scan_status === "clean" && f.delivery_status === "approved")
+    );
     const response = {
       checked_at: new Date().toISOString(),
       order_limit: 1000,
@@ -55,12 +61,14 @@ export async function GET() {
         inconsistent_orders: inconsistentOrders.length,
         checkout_reconciliation_candidates: awaitingReconciliation.length,
         files_not_cleared: awaitingScans.length,
+        paid_completed_orders_without_approved_file: completedWithoutApprovedOutput.length,
       },
       needs_manual_review: {
         inconsistent_order_ids: inconsistentOrders.map(o => o.id),
         checkout_order_ids: awaitingReconciliation.map(o => o.id),
+        finished_file_delivery_order_ids: completedWithoutApprovedOutput.map(o => o.id),
       },
-      warning: "Read-only database audit. Stripe payments, refund/dispute handling, antivirus execution, and customer download isolation require separate end-to-end verification.",
+      warning: "Read-only database audit. Missing finished-file approvals require calibration/checksum QA, never automatic approval. Stripe refunds/disputes, scanner execution and authenticated download isolation still require end-to-end verification.",
     };
     return NextResponse.json(response, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
