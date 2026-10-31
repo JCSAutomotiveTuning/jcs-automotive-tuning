@@ -115,7 +115,7 @@ export default function ResumeUpload({
       display: "grid",
       gap: 10
     }}>
-      <strong>Resume existing order</strong>
+      <strong>Add an original ECU, TCU or datalog file</strong>
 
       <input
         type="file"
@@ -130,7 +130,7 @@ export default function ResumeUpload({
         disabled={busy || !file}
         onClick={uploadFile}
       >
-        {busy ? "Uploading..." : "Resume Upload"}
+        {busy ? "Uploading..." : "Upload another file"}
       </button>
 
       {message && (
