@@ -234,6 +234,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Order payment requires reconciliation." }, { status: 409 });
   }
   // Existing ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£20 wallet top-up flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â preserved.
+  // The historic 50p owner-only live test is not an order or wallet top-up.
+  // Confirm its full Stripe refund before acknowledging its pending webhook.
+  if (session.metadata?.type === "owner_live_payment_test" &&
+      session.metadata?.purpose === "stripe_only_no_portal_order" &&
+      session.amount_total === 50 && session.currency === "gbp" &&
+      session.payment_intent) {
+    const intentId = typeof session.payment_intent === "string"
+      ? session.payment_intent : session.payment_intent.id;
+    try {
+      const refunds = await stripe.refunds.list({ payment_intent: intentId, limit: 100 });
+      const succeededPence = refunds.data.filter(r => r.status === "succeeded")
+        .reduce((sum, r) => sum + r.amount, 0);
+      if (!refunds.has_more && succeededPence === 50) {
+        console.info("Fully refunded standalone owner test acknowledged, no customer credit:", session.id);
+        return NextResponse.json({ received: true });
+      }
+    } catch (error) {
+      console.error("Owner test refund verification failed:",
+        error instanceof Error ? error.name : "unknown");
+    }
+    return NextResponse.json({ error: "Owner checkout requires refund reconciliation." }, { status: 409 });
+  }
   if (
     session.amount_total !== 2000 ||
     session.currency !== "gbp" ||
