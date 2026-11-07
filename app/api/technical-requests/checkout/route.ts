@@ -6,6 +6,7 @@ import {
   uuidPattern,
 } from "@/lib/technical-requests";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validatedCheckoutConfiguration } from "@/lib/stripe-checkout-configuration";
 
 export const runtime = "nodejs";
 
@@ -24,11 +25,12 @@ export async function POST(req: Request) {
   }
 
   const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey || !/^sk_(test|live)_/.test(stripeKey) ||
-      (process.env.VERCEL_ENV === "production" && !stripeKey.startsWith("sk_live_")) ||
-      (process.env.VERCEL_ENV === "preview" && !stripeKey.startsWith("sk_test_"))) {
-    console.error("Technical checkout Stripe key does not match deployment environment.");
-    return NextResponse.json({ error: "Checkout is not configured correctly." }, { status: 503 });
+  const configuration = validatedCheckoutConfiguration(
+    stripeKey, process.env.VERCEL_ENV, process.env.NEXT_PUBLIC_SITE_URL
+  );
+  if (!configuration.ok || !stripeKey) {
+    console.error("Technical checkout configuration rejected:", configuration.ok ? "missing key" : configuration.reason);
+    return NextResponse.json({ error: "Technical checkout is not configured correctly." }, { status: 503 });
   }
 
   const admin = createAdminClient();
@@ -155,9 +157,8 @@ export async function POST(req: Request) {
       );
     }
   }
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
-    new URL(req.url).origin;
+  // Only the configured trusted site may receive Stripe Checkout returns.
+  const base = configuration.siteUrl;
 
   try {
     const session = await stripe.checkout.sessions.create(
