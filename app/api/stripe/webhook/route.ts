@@ -163,8 +163,9 @@ export async function POST(req: Request) {
     const userId = session.metadata.user_id;
     const amount = Number(session.metadata.top_up_pence);
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // The feature switch controls NEW deposits, not fulfilment of money already taken.
+    // A valid signed, paid session must still be credited if deposits are later paused.
     const checks = {
-      walletEnabled: process.env.JCS_WALLET_DEPOSITS_ENABLED === "true",
       validCustomer: Boolean(userId && uuid.test(userId)),
       customerMatches: session.client_reference_id === userId,
       gbp: session.currency === "gbp",
