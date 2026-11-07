@@ -6,8 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 const schema = z.object({ orderId: z.string().uuid(), confirmation: z.literal("RELEASE_DEPOSIT") });
 export async function POST(req: Request) {
-  if (process.env.JCS_WALLET_DEPOSITS_ENABLED !== "true")
-    return NextResponse.json({ error: "Deposit wallet is not enabled." }, { status: 503 });
+  // Refund/release obligations remain actionable even when new deposit sales are paused.
   const site = process.env.NEXT_PUBLIC_SITE_URL;
   const origin = req.headers.get("origin");
   if (origin && (!site || new URL(origin).origin !== new URL(site).origin))
