@@ -85,7 +85,24 @@ export async function POST(req: Request) {
     });
   }
 
-  const {data:order,error}=await createAdminClient().from("orders").insert({
+  // Legacy pre-deposit fallback: cap outstanding requests while the wallet is
+  // being verified. The deposit-enabled RPC enforces this atomically.
+  const admin = createAdminClient();
+  const { count: activeOrders, error: activeError } = await admin.from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .not("status", "in", "(completed,cancelled,failed)");
+  if (activeError || activeOrders === null) {
+    console.error("Open-order quota lookup failed:", activeError?.message);
+    return NextResponse.json({ error: "Could not verify the submission limit. Please retry." }, { status: 503 });
+  }
+  if (activeOrders >= 3) {
+    return NextResponse.json({
+      error: "You can have at most three open jobs. Finish an existing job before submitting another.",
+    }, { status: 429 });
+  }
+
+  const {data:order,error}=await admin.from("orders").insert({
     user_id:user.id,
     service_code:v.serviceCode,
     service_name:service.name,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validatedCheckoutConfiguration } from "@/lib/stripe-checkout-configuration";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,18 +24,23 @@ export async function POST(req: Request) {
     }
 
     const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey || !/^(sk|rk)_(test|live)_/.test(secretKey)) {
-      console.error("Stripe server secret key is missing or has an invalid prefix.");
+    const configuration = validatedCheckoutConfiguration(
+      secretKey, process.env.VERCEL_ENV, process.env.NEXT_PUBLIC_SITE_URL
+    );
+    if (!configuration.ok || !secretKey) {
+      console.error("Order checkout configuration rejected:", configuration.ok ? "missing key" : configuration.reason);
       return NextResponse.json({ error: "Payments are not configured correctly." }, { status: 503 });
     }
-
-    if (process.env.VERCEL_ENV === "production" && !(/^(sk|rk)_live_/.test(secretKey))) {
-      console.error("Production checkout requires a live Stripe secret key.");
-      return NextResponse.json({ error: "Live payments are not configured correctly." }, { status: 503 });
-    }
-    if (process.env.VERCEL_ENV === "preview" && !(/^(sk|rk)_test_/.test(secretKey))) {
-      console.error("Preview checkout requires a test-mode Stripe secret key.");
-      return NextResponse.json({ error: "Test payments are not configured correctly." }, { status: 503 });
+    // Do not allow a cross-origin page to initiate Checkout using existing customer cookies.
+    const origin = req.headers.get("origin");
+    if (origin) {
+      try {
+        if (new URL(origin).origin !== configuration.siteUrl) {
+          return NextResponse.json({ error: "Invalid payment request origin." }, { status: 403 });
+        }
+      } catch {
+        return NextResponse.json({ error: "Invalid payment request origin." }, { status: 403 });
+      }
     }
 
     const admin = createAdminClient();
@@ -65,6 +71,11 @@ export async function POST(req: Request) {
     if (!Number.isSafeInteger(remainingPence) || remainingPence <= 0) {
       return NextResponse.json({ error: "This order has no remaining Stripe balance. Request manual account reconciliation." }, { status: 409 });
     }
+    if (remainingPence < 30) {
+      return NextResponse.json({
+        error: "The remaining card balance is below Stripe's 30p minimum. Contact JCS for manual reconciliation.",
+      }, { status: 409 });
+    }
     // Do not take payment for a tuning file which cannot yet be safely inspected.
     // A customer cannot add files once an order leaves awaiting_review.
     const { data: inputFiles, error: inputError } = await admin.from("order_files")
@@ -89,10 +100,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "The uploaded file is still awaiting antivirus clearance. No payment was taken." }, { status: 409 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "");
-    if (!siteUrl || !/^https?:\/\//.test(siteUrl)) {
-      return NextResponse.json({ error: "Payment return URL is not configured." }, { status: 503 });
-    }
+    const siteUrl = configuration.siteUrl;
     const stripe = new Stripe(secretKey);
 
     // A legacy session must be reconciled before adopting the attempt-based flow.
